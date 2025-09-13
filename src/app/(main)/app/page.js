@@ -137,27 +137,43 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 relative overflow-hidden">
       {/* Watermark Background */}
-      <div className="fixed inset-0 pointer-events-none opacity-10 z-0">
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-          <div className="text-[#002147] text-center">
-            <div className="text-8xl font-bold mb-2">M</div>
-            <div className="text-2xl font-semibold tracking-wider">MEGHA</div>
-            <div className="text-lg">MATERIALS HUB</div>
-          </div>
+      <div className="fixed inset-0 pointer-events-none opacity-5 z-0">
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 rotate-12">
+          <img
+            src="https://meil.in/sites/default/files/meil_logo_old_update_24.png"
+            alt="MEIL Logo Watermark"
+            className="w-96 h-48 object-contain filter grayscale"
+          />
         </div>
         
         {/* Additional watermarks in corners */}
-        <div className="absolute top-10 left-10 text-[#002147] text-center opacity-5">
-          <div className="text-4xl font-bold">M</div>
+        <div className="absolute top-10 left-10 text-[#002147] text-center opacity-3 rotate-6">
+          <img
+            src="https://meil.in/sites/default/files/meil_logo_old_update_24.png"
+            alt="MEIL Logo"
+            className="w-16 h-8 object-contain filter grayscale"
+          />
         </div>
-        <div className="absolute top-10 right-10 text-[#002147] text-center opacity-5">
-          <div className="text-4xl font-bold">M</div>
+        <div className="absolute top-10 right-10 text-[#002147] text-center opacity-3 -rotate-6">
+          <img
+            src="https://meil.in/sites/default/files/meil_logo_old_update_24.png"
+            alt="MEIL Logo"
+            className="w-16 h-8 object-contain filter grayscale"
+          />
         </div>
-        <div className="absolute bottom-10 left-10 text-[#002147] text-center opacity-5">
-          <div className="text-4xl font-bold">M</div>
+        <div className="absolute bottom-10 left-10 text-[#002147] text-center opacity-3 -rotate-6">
+          <img
+            src="https://meil.in/sites/default/files/meil_logo_old_update_24.png"
+            alt="MEIL Logo"
+            className="w-16 h-8 object-contain filter grayscale"
+          />
         </div>
-        <div className="absolute bottom-10 right-10 text-[#002147] text-center opacity-5">
-          <div className="text-4xl font-bold">M</div>
+        <div className="absolute bottom-10 right-10 text-[#002147] text-center opacity-3 rotate-6">
+          <img
+            src="https://meil.in/sites/default/files/meil_logo_old_update_24.png"
+            alt="MEIL Logo"
+            className="w-16 h-8 object-contain filter grayscale"
+          />
         </div>
       </div>
 
