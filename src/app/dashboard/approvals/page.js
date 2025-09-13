@@ -198,7 +198,7 @@ export default function ApprovalsPage() {
                 <Sparkles className="text-violet-600" size={28} />
                 <h1 className="text-3xl font-bold text-violet-700">Role Assignment</h1>
             </div>
-            <p className="text-gray-600 mb-8">Assign appropriate roles to employees who don't have one yet</p>
+            <p className="text-gray-600 mb-8">Assign appropriate roles to employees who don&apos;t have one yet</p>
 
             {/* Stats and Filters */}
             <div className="bg-gradient-to-r from-violet-50 to-purple-50 rounded-xl p-6 mb-6 border border-violet-100 shadow-sm">
