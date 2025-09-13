@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import axios from "axios";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
-console.log(process.env.NEXT_PUBLIC_API_BASE_URL)
+
 
 const AuthContext = createContext();
 
@@ -30,7 +30,7 @@ export function AuthProvider({ children }) {
     }, []);
 
     const login = async (email, password) => {
-        console.log(API_BASE_URL)
+    
         try {
             const res = await axios.post(`${API_BASE_URL}/employee/login/`, {
                 email,
