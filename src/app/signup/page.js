@@ -94,12 +94,7 @@ export default function Signup() {
         <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-gray-50 to-blue-50">
             <div className="max-w-md w-full space-y-8">
                 <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8">
-                    <div className="flex justify-center mb-2">
-                        <Link href="/" className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900 mb-6">
-                            <ArrowLeft size={16} className="mr-1" />
-                            Back to home
-                        </Link>
-                    </div>
+                   
 
                     <div className="text-center">
                         <div className="bg-gradient-to-r from-[#002147] to-[#7F56D9] p-3 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
