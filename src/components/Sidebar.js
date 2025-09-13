@@ -9,8 +9,8 @@ import {
   User,
   Package,
   Search,
-  ChevronLeft,
-  ChevronRight,
+  Menu,
+  X,
 } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -47,17 +47,13 @@ export default function Sidebar() {
         onClick={() => setIsMainSidebarCollapsed(!isMainSidebarCollapsed)}
         className="lg:hidden fixed top-4 left-4 z-50 bg-[#2f3190] text-white p-2 rounded-md shadow-lg transition-all hover:scale-105 hover:shadow-xl"
       >
-        {isMainSidebarCollapsed ? (
-          <span className="text-xl">&#9776;</span>
-        ) : (
-          <span className="text-xl">×</span>
-        )}
+        {isMainSidebarCollapsed ? <Menu size={24} /> : <X size={24} />}
       </button>
 
       <aside
         className={`${isMainSidebarCollapsed ? "w-16" : "w-64"} 
           h-screen bg-[#2f3190] flex flex-col fixed left-0 top-0 shadow-xl z-40 
-          transition-all duration-300`}
+          transition-all duration-300 ${isMainSidebarCollapsed ? 'lg:translate-x-0 -translate-x-full' : 'translate-x-0'}`}
       >
         {/* Logo + Collapse Button */}
         <div className="flex items-center justify-between px-4 py-4 border-b border-white/10">
@@ -77,16 +73,17 @@ export default function Sidebar() {
 
           {/* Collapse/Expand button beside logo */}
           <button
-            onClick={() => setIsMainSidebarCollapsed(!isMainSidebarCollapsed)}
-            className="ml-2 text-white hover:text-gray-300 transition"
-            title={isMainSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
-          >
-            {isMainSidebarCollapsed ? (
-              <ChevronRight size={22} />
-            ) : (
-              <ChevronLeft size={22} />
-            )}
-          </button>
+  onClick={() => setIsMainSidebarCollapsed(!isMainSidebarCollapsed)}
+  className="ml-2 p-1 text-red-500 hover:text-red-700 transition rounded hover:bg-red-500/10"
+  title={isMainSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+>
+  {isMainSidebarCollapsed ? (
+    <Menu size={20} />
+  ) : (
+    <X size={20} />
+  )}
+</button>
+
         </div>
 
         {/* User Info */}
