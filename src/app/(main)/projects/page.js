@@ -7,7 +7,8 @@ import {
   updateProject, 
   deleteProject 
 } from "@/lib/api";
-import {useAuth} from "@/context/AuthContext";  
+import {useAuth} from "@/context/AuthContext";
+import BackButton from "@/components/BackButton";
 
 export default function ProjectsPage() {
     const [projects, setProjects] = useState([]);
@@ -155,13 +156,19 @@ export default function ProjectsPage() {
                         </h1>
                         <p className="text-gray-600">Create and manage your projects</p>
                     </div>
-                    <button
-                        onClick={openAddModal}
-                        className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-200"
-                    >
-                        <Plus size={18} className="mr-2" />
-                        Add Project
-                    </button>
+                    <div className="flex items-center gap-3">
+                        <BackButton 
+                            href="/governance" 
+                            label="Back to Governance"
+                        />
+                        <button
+                            onClick={openAddModal}
+                            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-200"
+                        >
+                            <Plus size={18} className="mr-2" />
+                            Add Project
+                        </button>
+                    </div>
                 </div>
 
                 {/* Search Section */}
@@ -261,7 +268,7 @@ export default function ProjectsPage() {
                 )}
 
                 {/* Info Section */}
-                <div className="bg-blue-50 rounded-lg p-6 mt-6 border border-blue-200">
+                {/* <div className="bg-blue-50 rounded-lg p-6 mt-6 border border-blue-200">
                     <div className="flex items-start">
                         <div className="bg-blue-100 p-3 rounded-lg mr-4">
                             <Info className="h-6 w-6 text-blue-600" />
@@ -276,7 +283,7 @@ export default function ProjectsPage() {
                             </ul>
                         </div>
                     </div>
-                </div>
+                </div> */}
             </div>
 
             {/* Project Modal */}

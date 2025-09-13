@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Eye, EyeOff, Mail, Lock, LogIn, ArrowLeft, Package } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
 
 export default function Login() {
     const [email, setEmail] = useState("");
@@ -12,76 +13,42 @@ export default function Login() {
     const [isLoading, setIsLoading] = useState(false);
     const [errors, setErrors] = useState({});
     const router = useRouter();
+    const { login } = useAuth();
+
+
     const validateForm = () => {
         const newErrors = {};
-
-        if (!email) {
-            newErrors.email = "Email is required";
-        } else if (!/\S+@\S+\.\S+/.test(email)) {
-            newErrors.email = "Email is invalid";
-        }
-
-        if (!password) {
-            newErrors.password = "Password is required";
-        } else if (password.length < 6) {
-            newErrors.password = "Password must be at least 6 characters";
-        }
-
+        if (!email) newErrors.email = "Email is required";
+        if (!password) newErrors.password = "Password is required";
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
-    const staticUsers = [
-        { email: "user@gmail.com", password: "user123", role: "USER" },
-        { email: "admin@gmail.com", password: "admin123", role: "ADMIN" },
-        { email: "mdgt@gmail.com", password: "mdgt123", role: "MDGT" },
-        { email: "superadmin@gmail.com", password: "super123", role: "SUPERADMIN" }
-    ];
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-
         if (!validateForm()) return;
 
         setIsLoading(true);
+        const result = await login(email, password);
+        setIsLoading(false);
 
-
-        console.log("Login:", { email, password });
-
-        // Check credentials
-        const user = staticUsers.find(
-            (u) => u.email === email && u.password === password
-        );
-
-        if (user) {
-            // Store login state and role
-            localStorage.setItem("isLoggedIn", "true");
-            localStorage.setItem("userName", email);
-            localStorage.setItem("role", user.role);
-
-            setIsLoading(false);
-
-            // Success toast
-            const event = new CustomEvent("showToast", {
-                detail: { message: `Login successful as ${user.role}! Redirecting...`, type: "success" }
-            });
-            window.dispatchEvent(event);
-            console.log("Login successful as", user.role);
-
-            // Redirect
-            router.push("/app");
-
+        if (result.success) {
+            window.dispatchEvent(
+                new CustomEvent("showToast", {
+                    detail: {
+                        message: `Welcome ${result.data.emp_name}! Role: ${result.data.role}`,
+                        type: "success",
+                    },
+                })
+            );
         } else {
-            setIsLoading(false);
-
-            // Error toast
-            const event = new CustomEvent("showToast", {
-                detail: { message: "Invalid credentials!", type: "error" }
-            });
-            window.dispatchEvent(event);
+            window.dispatchEvent(
+                new CustomEvent("showToast", {
+                    detail: { message: result.error, type: "error" },
+                })
+            );
         }
-
     };
-
     return (
         <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-gray-50 to-blue-50">
             <div className="max-w-md w-full space-y-8">

@@ -1,135 +1,147 @@
-// app/requests/page.js
 "use client";
 import { useState, useEffect } from "react";
-import { FileText, FolderPlus, Clock, Search, Filter, ChevronLeft, ChevronRight, MessageSquare, User, Calendar, AlertCircle, CheckCircle, XCircle, MoreVertical, Plus, Edit, Trash2, Send, ArrowLeft } from "lucide-react";
+import {
+    Plus, Edit, Trash2, Search, FileText, Info, Loader2, Eye, MessageSquare, Save, X, Tag
+} from "lucide-react";
+import {
+    fetchRequests,
+    createRequest,
+    updateRequest,
+    deleteRequest,
+    assignSapItem
+} from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
+import { useRouter } from "next/navigation";
+
 
 export default function RequestsPage() {
-    const [view, setView] = useState("list"); // 'list', 'detail', or 'create'
-    const [selectedRequest, setSelectedRequest] = useState(null);
-    const [userRole, setUserRole] = useState("user"); // 'user' or 'mdgt'
+    const [requests, setRequests] = useState([]);
     const [searchTerm, setSearchTerm] = useState("");
-    const [filterStatus, setFilterStatus] = useState("all");
-    const [currentPage, setCurrentPage] = useState(1);
-    const [comment, setComment] = useState("");
-    const [isEditing, setIsEditing] = useState(false);
-    const [editData, setEditData] = useState({});
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isChatModalOpen, setIsChatModalOpen] = useState(false);
+    const [isNotesModalOpen, setIsNotesModalOpen] = useState(false);
+    const [isSapModalOpen, setIsSapModalOpen] = useState(false);
+    const [editingRequest, setEditingRequest] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const router = useRouter();
 
-    // Form states for create/edit
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState(null);
     const [formData, setFormData] = useState({
-        title: "",
-        type: "Material",
-        priority: "Medium",
-        description: ""
+        project_code: "",
+        notes: "",
     });
-
-    // Sample data - in a real app, this would come from an API
-    const [requests, setRequests] = useState([
-        {
-            id: "REQ-001",
-            title: "Need stainless steel bolts",
-            type: "Material",
-            status: "Open",
-            priority: "High",
-            requester: "AK San",
-            assignedTo: "BK San",
-            createdDate: "18/12/2024",
-            updatedDate: "19/12/2024",
-            description: "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
-            history: [
-                { date: "18/12/2024", action: "Created", by: "AK San" },
-                { date: "18/12/2024", action: "Assigned to BK San", by: "System" },
-                { date: "19/12/2024", action: "Updated", by: "BK San" }
-            ],
-            messages: [
-                { id: 1, sender: "AK San", message: "Need these bolts for the construction project.", time: "10:30 AM", isUser: false },
-                { id: 2, sender: "BK San", message: "Looking into available options.", time: "11:45 AM", isUser: true }
-            ]
-        },
-        {
-            id: "REQ-002",
-            title: "Create Plumbing category",
-            type: "Material Group",
-            status: "Closed",
-            priority: "Medium",
-            requester: "DK San",
-            assignedTo: "Allen",
-            createdDate: "07/06/2023",
-            updatedDate: "07/06/2023",
-            description: "We need a new category for plumbing materials to better organize our inventory.",
-            history: [
-                { date: "07/06/2023", action: "Created", by: "DK San" },
-                { date: "07/06/2023", action: "Assigned to Allen", by: "System" },
-                { date: "07/06/2023", action: "Completed", by: "Allen" },
-                { date: "07/06/2023", action: "Closed", by: "System" }
-            ],
-            messages: [
-                { id: 1, sender: "DK San", message: "This will help us organize plumbing materials better.", time: "09:15 AM", isUser: false },
-                { id: 2, sender: "Allen", message: "Category created and materials moved.", time: "02:30 PM", isUser: true }
-            ]
-        },
-        {
-            id: "REQ-003",
-            title: "Schedule a call for project discussion",
-            type: "Meeting",
-            status: "In Progress",
-            priority: "Urgent",
-            requester: "Jack San",
-            assignedTo: "CK San",
-            createdDate: "15/12/2024",
-            updatedDate: "16/12/2024",
-            description: "Need to schedule a call to discuss the new project requirements and timelines.",
-            history: [
-                { date: "15/12/2024", action: "Created", by: "Jack San" },
-                { date: "15/12/2024", action: "Assigned to CK San", by: "System" },
-                { date: "16/12/2024", action: "In Progress", by: "CK San" }
-            ],
-            messages: [
-                { id: 1, sender: "Jack San", message: "Please schedule this as soon as possible.", time: "03:20 PM", isUser: false },
-                { id: 2, sender: "CK San", message: "Checking availability for this week.", time: "04:45 PM", isUser: true }
-            ]
-        }
-    ]);
+    const [chatData, setChatData] = useState({
+        user_text: "",
+        reply_text: "",
+    });
+    const [notesData, setNotesData] = useState({
+        notes: "",
+    });
+    const [sapData, setSapData] = useState({
+        sap_item: "",
+    });
+    const { role, token, loading: authLoading } = useAuth(); // include loading
 
     useEffect(() => {
-        // Get user info from localStorage
-        const role = localStorage.getItem("userRole") || "user";
-        setUserRole(role);
-    }, []);
+        if (!authLoading && token) {
+            loadRequests();
+        }
+    }, [authLoading, token]);
 
-    const handleRequestSelect = (request) => {
-        setSelectedRequest(request);
-        setView("detail");
+    const loadRequests = async () => {
+        try {
+            setLoading(true);
+            // const token = localStorage.getItem("token");
+            console.log("token : ", token)
+            setError(null);
+            if (!token) {
+                setError("No authentication token found");
+                return;
+            }
+
+            const data = await fetchRequests(token);
+            setRequests(data || []);
+        } catch (err) {
+            setError("Failed to load requests: " + (err.response?.data?.error || err.message));
+            console.error("Error loading requests:", err);
+        } finally {
+            setLoading(false);
+        }
     };
+    console.log("formdata : ", formData)
 
-    const handleBackToList = () => {
-        setView("list");
-        setSelectedRequest(null);
-        setIsEditing(false);
-    };
+    // Filter requests
+    const filteredRequests = requests.filter(request => {
+        const matchesSearch =
+            (request.user_text || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (request.reply_text || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (request.status || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (request.notes || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (request.sap_item || "").toLowerCase().includes(searchTerm.toLowerCase());
 
-    const handleCreateNew = () => {
+        return matchesSearch;
+    });
+
+    // Modal handlers
+    const handleAddNew = () => {
+        setEditingRequest(null);
         setFormData({
-            title: "",
-            type: "Material",
-            priority: "Medium",
-            description: ""
+            project_code: "",
+            notes: "",
         });
-        setView("create");
+        setIsModalOpen(true);
+        setError(null);
     };
 
     const handleEdit = (request) => {
-        setEditData(request);
+        setEditingRequest(request);
         setFormData({
-            title: request.title,
-            type: request.type,
-            priority: request.priority,
-            description: request.description
+            project_code: request.project_code || "",
+            notes: request.notes || "",
         });
-        setIsEditing(true);
-        setView("create");
+        setIsModalOpen(true);
+        setError(null);
     };
 
-    const handleFormChange = (e) => {
+    const handleChatUpdate = (request) => {
+        setEditingRequest(request);
+        setChatData({
+            user_text: request.user_text || "",
+            reply_text: request.reply_text || "",
+        });
+        setIsChatModalOpen(true);
+        setError(null);
+    };
+
+    const handleNotesUpdate = (request) => {
+        setEditingRequest(request);
+        setNotesData({
+            notes: request.notes || "",
+        });
+        setIsNotesModalOpen(true);
+        setError(null);
+    };
+
+    const handleSapAssign = (request) => {
+        setEditingRequest(request);
+        setSapData({
+            sap_item: request.sap_item || "",
+        });
+        setIsSapModalOpen(true);
+        setError(null);
+    };
+
+    const handleCloseModal = () => {
+        setIsModalOpen(false);
+        setIsChatModalOpen(false);
+        setIsNotesModalOpen(false);
+        setIsSapModalOpen(false);
+        setEditingRequest(null);
+        setError(null);
+    };
+
+    const handleInputChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({
             ...prev,
@@ -137,711 +149,559 @@ export default function RequestsPage() {
         }));
     };
 
-    const handleSubmitForm = () => {
-        if (isEditing) {
-            // Update existing request
-            const updatedRequests = requests.map(req => {
-                if (req.id === editData.id) {
-                    return {
-                        ...req,
-                        title: formData.title,
-                        type: formData.type,
-                        priority: formData.priority,
-                        description: formData.description,
-                        updatedDate: new Date().toLocaleDateString('en-GB'),
-                        history: [
-                            ...req.history,
-                            {
-                                date: new Date().toLocaleDateString('en-GB'),
-                                action: "Updated",
-                                by: userRole === "mdgt" ? "MDGT Support" : "You"
-                            }
-                        ]
-                    };
+    const handleChatInputChange = (e) => {
+        const { name, value } = e.target;
+        setChatData(prev => ({
+            ...prev,
+            [name]: value
+        }));
+    };
+
+    const handleNotesInputChange = (e) => {
+        const { name, value } = e.target;
+        setNotesData(prev => ({
+            ...prev,
+            [name]: value
+        }));
+    };
+
+    const handleSapInputChange = (e) => {
+        const { name, value } = e.target;
+        setSapData(prev => ({
+            ...prev,
+            [name]: value
+        }));
+    };
+
+    const handleSaveRequest = async () => {
+        if (!formData.project_code) {
+            setError("Please fill in required field: Project ID");
+            return;
+        }
+
+        try {
+            setSaving(true);
+            setError(null);
+            if (!token) {
+                setError("No authentication token found");
+                return;
+            }
+
+            if (editingRequest) {
+                await updateRequest(token, editingRequest.request_id, formData);
+            } else {
+                await createRequest(token, formData);
+            }
+
+            await loadRequests();
+            handleCloseModal();
+        } catch (err) {
+            setError("Failed to save request: " + (err.response?.data?.error || err.message));
+            console.error("Error saving request:", err);
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleSaveChat = async () => {
+        try {
+            setSaving(true);
+            setError(null);
+            if (!token) {
+                setError("No authentication token found");
+                return;
+            }
+
+            await updateRequest(token, editingRequest.request_id, chatData);
+            await loadRequests();
+            handleCloseModal();
+        } catch (err) {
+            setError("Failed to update chat: " + (err.response?.data?.error || err.message));
+            console.error("Error updating chat:", err);
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleSaveNotes = async () => {
+        try {
+            setSaving(true);
+            setError(null);
+            if (!token) {
+                setError("No authentication token found");
+                return;
+            }
+
+            await updateRequest(token, editingRequest.request_id, notesData);
+            await loadRequests();
+            handleCloseModal();
+        } catch (err) {
+            setError("Failed to update notes: " + (err.response?.data?.error || err.message));
+            console.error("Error updating notes:", err);
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleSaveSap = async () => {
+        if (!sapData.sap_item) {
+            setError("Please enter SAP Item ID");
+            return;
+        }
+
+        try {
+            setSaving(true);
+            setError(null);
+            if (!token) {
+                setError("No authentication token found");
+                return;
+            }
+
+            await assignSapItem(token, editingRequest.request_id, sapData.sap_item);
+            await loadRequests();
+            handleCloseModal();
+        } catch (err) {
+            setError("Failed to assign SAP item: " + (err.response?.data?.error || err.message));
+            console.error("Error assigning SAP item:", err);
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleDelete = async (request_id) => {
+        if (window.confirm("Are you sure you want to delete this request? This action cannot be undone.")) {
+            try {
+                setError(null);
+                if (!token) {
+                    setError("No authentication token found");
+                    return;
                 }
-                return req;
-            });
 
-            setRequests(updatedRequests);
-            setSelectedRequest(updatedRequests.find(req => req.id === editData.id));
-        } else {
-            // Create new request
-            const newRequest = {
-                id: `REQ-${String(requests.length + 1).padStart(3, '0')}`,
-                title: formData.title,
-                type: formData.type,
-                status: "Open",
-                priority: formData.priority,
-                requester: userRole === "mdgt" ? "MDGT Support" : "You",
-                assignedTo: userRole === "mdgt" ? "You" : "MDGT Support",
-                createdDate: new Date().toLocaleDateString('en-GB'),
-                updatedDate: new Date().toLocaleDateString('en-GB'),
-                description: formData.description,
-                history: [
-                    {
-                        date: new Date().toLocaleDateString('en-GB'),
-                        action: "Created",
-                        by: userRole === "mdgt" ? "MDGT Support" : "You"
-                    }
-                ],
-                messages: []
-            };
-
-            setRequests([newRequest, ...requests]);
-            setSelectedRequest(newRequest);
-        }
-
-        setView("detail");
-        setIsEditing(false);
-    };
-
-    const handleDelete = (id) => {
-        if (window.confirm("Are you sure you want to delete this request?")) {
-            const updatedRequests = requests.filter(req => req.id !== id);
-            setRequests(updatedRequests);
-
-            if (selectedRequest && selectedRequest.id === id) {
-                setView("list");
-                setSelectedRequest(null);
+                await deleteRequest(token, request_id);
+                await loadRequests();
+            } catch (err) {
+                setError("Failed to delete request: " + (err.response?.data?.error || err.message));
+                console.error("Error deleting request:", err);
             }
         }
     };
 
-    const handleSendMessage = () => {
-        if (!comment.trim()) return;
-
-        const newMessage = {
-            id: Date.now(),
-            sender: userRole === "mdgt" ? "MDGT Support" : "You",
-            message: comment,
-            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            isUser: userRole === "mdgt"
-        };
-
-        const updatedRequests = requests.map(req => {
-            if (req.id === selectedRequest.id) {
-                return {
-                    ...req,
-                    messages: [...req.messages, newMessage],
-                    updatedDate: new Date().toLocaleDateString('en-GB')
-                };
-            }
-            return req;
-        });
-
-        setRequests(updatedRequests);
-        setSelectedRequest({
-            ...selectedRequest,
-            messages: [...selectedRequest.messages, newMessage],
-            updatedDate: new Date().toLocaleDateString('en-GB')
-        });
-        setComment("");
-    };
-
-    const updateRequestStatus = (status) => {
-        const updatedRequests = requests.map(req => {
-            if (req.id === selectedRequest.id) {
-                const action = status === "Closed" ? "Closed" :
-                    status === "Reopened" ? "Reopened" :
-                        status === "In Progress" ? "In Progress" : "Updated";
-
-                return {
-                    ...req,
-                    status: status === "Reopened" ? "Open" : status,
-                    updatedDate: new Date().toLocaleDateString('en-GB'),
-                    history: [
-                        ...req.history,
-                        {
-                            date: new Date().toLocaleDateString('en-GB'),
-                            action: action,
-                            by: userRole === "mdgt" ? "MDGT Support" : "You"
-                        }
-                    ]
-                };
-            }
-            return req;
-        });
-
-        setRequests(updatedRequests);
-        setSelectedRequest(updatedRequests.find(req => req.id === selectedRequest.id));
-    };
-
-    const filteredRequests = requests.filter(request => {
-        const matchesSearch = request.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            request.id.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesStatus = filterStatus === "all" || request.status === filterStatus;
-        return matchesSearch && matchesStatus;
-    });
-
-    const itemsPerPage = 5;
-    const totalPages = Math.ceil(filteredRequests.length / itemsPerPage);
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const paginatedRequests = filteredRequests.slice(startIndex, startIndex + itemsPerPage);
-
-    const getStatusIcon = (status) => {
-        switch (status) {
-            case "Open": return <AlertCircle size={16} className="text-blue-500" />;
-            case "In Progress": return <Clock size={16} className="text-yellow-500" />;
-            case "Closed": return <CheckCircle size={16} className="text-green-500" />;
-            default: return <AlertCircle size={16} className="text-gray-500" />;
+    const getStatusColor = (status) => {
+        switch (status?.toLowerCase()) {
+            case 'open':
+                return 'bg-blue-100 text-blue-800';
+            case 'closed':
+                return 'bg-green-100 text-green-800';
+            case 'rejected':
+                return 'bg-red-100 text-red-800';
+            default:
+                return 'bg-gray-100 text-gray-800';
         }
     };
 
-    const getPriorityBadge = (priority) => {
-        const priorityClasses = {
-            Low: "bg-gray-100 text-gray-800",
-            Medium: "bg-yellow-100 text-yellow-800",
-            High: "bg-orange-100 text-orange-800",
-            Urgent: "bg-red-100 text-red-800"
-        };
-
-        return (
-            <span className={`px-2 py-1 rounded-full text-xs font-medium ${priorityClasses[priority]}`}>
-                {priority}
-            </span>
-        );
-    };
-
-    // Create/Edit View
-    if (view === "create") {
-        return (
-            <div className="min-h-screen bg-gray-50 p-6">
-                <div className="max-w-2xl mx-auto">
-                    <div className="flex items-center mb-6">
-                        <button
-                            onClick={handleBackToList}
-                            className="mr-3 p-2 rounded-lg hover:bg-gray-100"
-                        >
-                            <ArrowLeft size={20} />
-                        </button>
-                        <h1 className="text-2xl font-bold text-gray-800">
-                            {isEditing ? "Edit Request" : "Create New Request"}
+    return (
+        <div className="min-h-screen bg-gray-50 p-6">
+            <div className="max-w-7xl mx-auto">
+                {/* Header */}
+                <div className="flex justify-between items-center mb-6">
+                    <div>
+                        <h1 className="font-default text-2xl font-bold text-gray-800 flex items-center">
+                            <FileText className="mr-2" size={28} />
+                            Requests Management
                         </h1>
+                        {/* <p className="text-gray-600">Manage and track material requests with chat functionality</p> */}
                     </div>
-
-                    <div className="bg-white rounded-lg shadow-sm p-6">
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
-                                <input
-                                    type="text"
-                                    name="title"
-                                    value={formData.title}
-                                    onChange={handleFormChange}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    placeholder="Enter request title"
-                                />
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
-                                    <select
-                                        name="type"
-                                        value={formData.type}
-                                        onChange={handleFormChange}
-                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    >
-                                        <option value="Material">Material</option>
-                                        <option value="Material Group">Material Group</option>
-                                        <option value="Meeting">Meeting</option>
-                                        <option value="Other">Other</option>
-                                    </select>
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
-                                    <select
-                                        name="priority"
-                                        value={formData.priority}
-                                        onChange={handleFormChange}
-                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    >
-                                        <option value="Low">Low</option>
-                                        <option value="Medium">Medium</option>
-                                        <option value="High">High</option>
-                                        <option value="Urgent">Urgent</option>
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                                <textarea
-                                    name="description"
-                                    value={formData.description}
-                                    onChange={handleFormChange}
-                                    rows={4}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    placeholder="Describe your request in detail..."
-                                />
-                            </div>
-
-                            <div className="flex justify-end space-x-3 pt-4">
-                                <button
-                                    onClick={handleBackToList}
-                                    className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={handleSubmitForm}
-                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                                >
-                                    {isEditing ? "Update Request" : "Create Request"}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
-    // List View
-    if (view === "list") {
-        return (
-            <div className="min-h-screen bg-gray-50 p-6">
-                <div className="max-w-7xl mx-auto">
-                    {/* Header */}
-                    <div className="flex justify-between items-center mb-6">
-                        <div>
-                            <h1 className="text-2xl font-bold text-gray-800">Requests Management</h1>
-                            <p className="text-gray-600">View and manage all requests</p>
-                        </div>
+                    {(role === "Employee" || role === "MDGT" || role === "Admin" || role === "SuperAdmin") && (
                         <button
-                            onClick={handleCreateNew}
+                            onClick={handleAddNew}
                             className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                         >
                             <Plus size={18} className="mr-2" />
-                            New Request
+                            Add Request
+                        </button>
+                    )}
+                </div>
+
+                {/* Error Message */}
+                {error && (
+                    <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                        <p className="text-red-700">{error}</p>
+                        <button
+                            onClick={() => setError(null)}
+                            className="mt-2 text-red-600 hover:text-red-800 text-sm"
+                        >
+                            Dismiss
                         </button>
                     </div>
+                )}
 
-                    {/* Stats Cards */}
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                        <div className="bg-white rounded-lg p-4 shadow-sm">
-                            <div className="flex justify-between items-center">
-                                <div>
-                                    <p className="text-sm font-medium text-gray-600">Total Requests</p>
-                                    <p className="text-2xl font-bold text-gray-900">{requests.length}</p>
-                                </div>
-                                <div className="bg-blue-100 p-2 rounded-lg">
-                                    <FileText className="text-blue-600" size={20} />
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="bg-white rounded-lg p-4 shadow-sm">
-                            <div className="flex justify-between items-center">
-                                <div>
-                                    <p className="text-sm font-medium text-gray-600">Open Requests</p>
-                                    <p className="text-2xl font-bold text-gray-900">
-                                        {requests.filter(r => r.status === "Open").length}
-                                    </p>
-                                </div>
-                                <div className="bg-yellow-100 p-2 rounded-lg">
-                                    <AlertCircle className="text-yellow-600" size={20} />
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="bg-white rounded-lg p-4 shadow-sm">
-                            <div className="flex justify-between items-center">
-                                <div>
-                                    <p className="text-sm font-medium text-gray-600">In Progress</p>
-                                    <p className="text-2xl font-bold text-gray-900">
-                                        {requests.filter(r => r.status === "In Progress").length}
-                                    </p>
-                                </div>
-                                <div className="bg-orange-100 p-2 rounded-lg">
-                                    <Clock className="text-orange-600" size={20} />
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="bg-white rounded-lg p-4 shadow-sm">
-                            <div className="flex justify-between items-center">
-                                <div>
-                                    <p className="text-sm font-medium text-gray-600">Closed</p>
-                                    <p className="text-2xl font-bold text-gray-900">
-                                        {requests.filter(r => r.status === "Closed").length}
-                                    </p>
-                                </div>
-                                <div className="bg-green-100 p-2 rounded-lg">
-                                    <CheckCircle className="text-green-600" size={20} />
-                                </div>
-                            </div>
+                {/* Search */}
+                <div className="bg-white rounded-lg p-4 shadow-sm mb-6">
+                    <div className="flex flex-col md:flex-row gap-4">
+                        <div className="relative flex-1">
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+                            <input
+                                type="text"
+                                placeholder="Search requests by text, status, notes, or SAP item..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
                         </div>
                     </div>
+                </div>
 
-                    {/* Search and Filter */}
-                    <div className="bg-white rounded-lg p-4 shadow-sm mb-6">
-                        <div className="flex flex-col md:flex-row gap-4">
-                            <div className="relative flex-1">
-                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-                                <input
-                                    type="text"
-                                    placeholder="Search requests..."
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                />
-                            </div>
-
-                            <div className="flex gap-2">
-                                <select
-                                    value={filterStatus}
-                                    onChange={(e) => setFilterStatus(e.target.value)}
-                                    className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                >
-                                    <option value="all">All Status</option>
-                                    <option value="Open">Open</option>
-                                    <option value="In Progress">In Progress</option>
-                                    <option value="Closed">Closed</option>
-                                </select>
-
-                                <button className="px-4 py-2 bg-gray-100 border border-gray-300 rounded-lg flex items-center">
-                                    <Filter size={18} className="mr-2" />
-                                    More Filters
-                                </button>
-                            </div>
-                        </div>
+                {/* Loading State */}
+                {loading ? (
+                    <div className="bg-white rounded-lg shadow-sm p-8 text-center">
+                        <Loader2 className="h-8 w-8 animate-spin mx-auto text-blue-600 mb-4" />
+                        <p className="text-gray-600">Loading requests...</p>
                     </div>
-
-                    {/* Requests Table */}
+                ) : (
+                    /* Requests Table */
                     <div className="bg-white rounded-lg shadow-sm overflow-hidden">
                         <div className="overflow-x-auto">
                             <table className="w-full">
                                 <thead className="bg-gray-50">
                                     <tr>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Requester</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assigned To</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Priority</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created Date</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Project Code</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created By</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created</th>
+
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
-                                    {paginatedRequests.map((request) => (
-                                        <tr key={request.id} className="hover:bg-gray-50">
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{request.id}</td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                <div
-                                                    className="font-medium cursor-pointer hover:text-blue-600"
-                                                    onClick={() => handleRequestSelect(request)}
-                                                >
-                                                    {request.title}
-                                                </div>
-                                                <div className="text-gray-500 text-xs">{request.type}</div>
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{request.requester}</td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{request.assignedTo}</td>
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                {getPriorityBadge(request.priority)}
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                <div className="flex items-center">
-                                                    {getStatusIcon(request.status)}
-                                                    <span className="ml-1 text-sm text-gray-900">{request.status}</span>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{request.createdDate}</td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                <div className="flex space-x-2">
-                                                    <button
-                                                        className="text-blue-600 hover:text-blue-800"
-                                                        onClick={() => handleRequestSelect(request)}
-                                                    >
-                                                        View
-                                                    </button>
-                                                    <button
-                                                        className="text-green-600 hover:text-green-800"
-                                                        onClick={() => handleEdit(request)}
-                                                    >
-                                                        Edit
-                                                    </button>
-                                                    <button
-                                                        className="text-red-600 hover:text-red-800"
-                                                        onClick={() => handleDelete(request.id)}
-                                                    >
-                                                        Delete
-                                                    </button>
-                                                </div>
+                                    {filteredRequests.length > 0 ? (
+                                        filteredRequests.map((request) => (
+                                          <tr key={request.request_id} className="hover:bg-gray-50">
+                                          <td
+  onClick={() => router.push(`/requests/${request.request_id}`)}
+  className="px-6 py-4 text-sm text-gray-900 cursor-pointer hover:text-blue-600 hover:underline"
+>
+  {request.request_id}
+</td>
+<td
+  onClick={() => router.push(`/requests/${request.request_id}`)}
+  className="px-6 py-4 text-sm text-gray-900 cursor-pointer hover:text-blue-600 hover:underline"
+>
+  {request.project_code || "N/A"}
+</td>
+<td
+  onClick={() => router.push(`/requests/${request.request_id}`)}
+  className="px-6 py-4 text-sm text-gray-900 cursor-pointer hover:text-blue-600 hover:underline"
+>
+  {request.notes || "N/A"}
+</td>
+
+                                          <td className="px-6 py-4 text-sm text-gray-900">
+                                            {request.created_by || "N/A"}
+                                          </td>
+                                          <td className="px-6 py-4 text-sm text-gray-900">
+                                            {request.created ? new Date(request.created).toLocaleDateString() : "N/A"}
+                                          </td>
+                                          <td className="px-6 py-4 text-sm text-gray-900">
+  <div className="flex space-x-2">
+    {/* Update */}
+    <button
+      onClick={() => handleEdit(request)}
+      className="p-2 text-blue-600 hover:bg-blue-100 rounded"
+      title="Update Request"
+    >
+      <Edit size={16} />
+    </button>
+
+    {/* Delete (role check) */}
+    {(role === "MDGT" || role === "Admin" || role === "SuperAdmin") && (
+      <button
+        onClick={() => handleDelete(request.request_id)}
+        className="p-2 text-red-600 hover:bg-red-100 rounded"
+        title="Delete Request"
+      >
+        <Trash2 size={16} />
+      </button>
+    )}
+  </div>
+</td>
+
+                                        </tr>
+                                        
+                                        ))
+                                    ) : (
+                                        <tr>
+                                            <td colSpan="7" className="px-6 py-4 text-center text-sm text-gray-500">
+                                                {requests.length === 0
+                                                    ? "No requests found. Add a new request to get started."
+                                                    : "No requests found matching your criteria."}
                                             </td>
                                         </tr>
-                                    ))}
+                                    )}
                                 </tbody>
                             </table>
                         </div>
+                    </div>
+                )}
 
-                        {/* Pagination */}
-                        <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
-                            <div className="text-sm text-gray-700">
-                                Showing <span className="font-medium">{startIndex + 1}</span> to{" "}
-                                <span className="font-medium">{Math.min(startIndex + itemsPerPage, filteredRequests.length)}</span> of{" "}
-                                <span className="font-medium">{filteredRequests.length}</span> results
+                {/* Info Section */}
+                {/* <div className="bg-blue-50 rounded-lg p-6 mt-6 border border-blue-200">
+                    <div className="flex items-start">
+                        <div className="bg-blue-100 p-3 rounded-lg mr-4">
+                            <Info className="h-6 w-6 text-blue-600" />
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-semibold text-blue-800 mb-2">Requests Guide</h3>
+                            <ul className="list-disc list-inside text-blue-700 space-y-1">
+                                <li>Use the chat icon to update conversation between parties</li>
+                                <li>Use the edit icon to update notes when required</li>
+                                <li>MDGT role can assign SAP items using the tag icon</li>
+                                <li>Only Admins, SuperAdmins, and MDGT can delete requests</li>
+                                <li>Use the search bar to find requests by various criteria</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div> */}
+            </div>
+
+            {/* Request Modal */}
+            {isModalOpen && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                    <div className="bg-white rounded-lg shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                        <div className="flex justify-between items-center p-6 border-b">
+                            <h2 className="text-xl font-semibold text-gray-800">
+                                {editingRequest ? "Edit Request" : "Add New Request"}
+                            </h2>
+                            <button onClick={handleCloseModal} className="text-gray-400 hover:text-gray-600">
+                                ✕
+                            </button>
+                        </div>
+
+                        <div className="p-6 grid grid-cols-1 gap-4">
+                            {error && (
+                                <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                                    <div className="text-red-600 text-sm">{error}</div>
+                                </div>
+                            )}
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Project Code *</label>
+                                <input
+                                    type="text"
+                                    name="project_code"   // ✅ correct
+                                    value={formData.project_code}
+                                    onChange={handleInputChange}
+                                    className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    placeholder="Enter Project Code"
+                                />
+
                             </div>
 
-                            <div className="flex space-x-2">
-                                <button
-                                    onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                                    disabled={currentPage === 1}
-                                    className="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
-                                >
-                                    <ChevronLeft size={16} />
-                                </button>
-
-                                <button
-                                    onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                                    disabled={currentPage === totalPages}
-                                    className="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
-                                >
-                                    <ChevronRight size={16} />
-                                </button>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                                <textarea
+                                    name="notes"
+                                    value={formData.notes}
+                                    onChange={handleInputChange}
+                                    rows={3}
+                                    className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    placeholder="Additional notes..."
+                                />
                             </div>
+                        </div>
+
+                        <div className="flex justify-end space-x-3 p-6 border-t">
+                            <button
+                                onClick={handleCloseModal}
+                                disabled={saving}
+                                className="px-4 py-2 border rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleSaveRequest}
+                                disabled={saving || !formData.project_code}
+                                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center"
+                            >
+                                {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                                {editingRequest ? "Save Changes" : "Add Request"}
+                            </button>
                         </div>
                     </div>
                 </div>
-            </div>
-        );
-    }
+            )}
 
-    // Detail View
-    if (view === "detail" && selectedRequest) {
-        return (
-            <div className="min-h-screen bg-gray-50 p-6">
-                <div className="max-w-7xl mx-auto flex flex-col lg:flex-row gap-6">
-                    {/* Sidebar with requests list */}
-                    {/* <div className="lg:w-1/3">
-                        <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
-                            <div className="flex items-center justify-between mb-4">
-                                <h2 className="text-lg font-semibold text-gray-800">All Requests</h2>
-                                <button
-                                    onClick={handleBackToList}
-                                    className="text-sm text-blue-600 hover:text-blue-800 flex items-center"
-                                >
-                                    <ChevronLeft size={16} className="mr-1" />
-                                    Back to list
-                                </button>
-                            </div>
+            {/* Chat Update Modal */}
+            {isChatModalOpen && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                    <div className="bg-white rounded-lg shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                        <div className="flex justify-between items-center p-6 border-b">
+                            <h2 className="text-xl font-semibold text-gray-800">Update Chat Conversation</h2>
+                            <button onClick={handleCloseModal} className="text-gray-400 hover:text-gray-600">
+                                ✕
+                            </button>
+                        </div>
 
-                            <div className="relative mb-4">
-                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
-                                <input
-                                    type="text"
-                                    placeholder="Search requests..."
-                                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        <div className="p-6 grid grid-cols-1 gap-4">
+                            {error && (
+                                <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                                    <div className="text-red-600 text-sm">{error}</div>
+                                </div>
+                            )}
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">User Text</label>
+                                <textarea
+                                    name="user_text"
+                                    value={chatData.user_text}
+                                    onChange={handleChatInputChange}
+                                    rows={4}
+                                    className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    placeholder="User's message or request..."
                                 />
                             </div>
 
-                            <div className="space-y-3 max-h-96 overflow-y-auto">
-                                {requests.map((request) => (
-                                    <div
-                                        key={request.id}
-                                        className={`p-3 border rounded-lg cursor-pointer ${selectedRequest.id === request.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:bg-gray-50'}`}
-                                        onClick={() => handleRequestSelect(request)}
-                                    >
-                                        <div className="flex justify-between items-start">
-                                            <div>
-                                                <h3 className="font-medium text-gray-900">{request.title}</h3>
-                                                <p className="text-sm text-gray-500">{request.id} • {request.type}</p>
-                                            </div>
-                                            <div className="flex items-center">
-                                                {getPriorityBadge(request.priority)}
-                                            </div>
-                                        </div>
-                                        <div className="flex justify-between items-center mt-2">
-                                            <span className="text-xs text-gray-500">{request.createdDate}</span>
-                                            <div className="flex items-center">
-                                                {getStatusIcon(request.status)}
-                                                <span className="text-xs ml-1 text-gray-500">{request.status}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    </div> */}
-
-                    {/* Main content - Request details */}
-                    <div className="w-full flex">
-                        <div className="bg-white rounded-lg shadow-sm p-6 m-6 w-3/4">
-                            {/* Request header */}
-                            <div className="flex justify-between items-start mb-6">
-                                <div className="flex items-center justify-between mb-4">
-
-                                    <button
-                                        onClick={handleBackToList}
-                                        className="text-sm text-blue-600 hover:text-blue-800 flex items-center"
-                                    >
-                                        <ChevronLeft size={16} className="mr-1" />
-                                        Back to list
-                                    </button>
-                                </div>
-                                <div>
-                                    <h1 className="text-2xl font-bold text-gray-900">{selectedRequest.title}</h1>
-                                    <p className="text-gray-600">{selectedRequest.id} • {selectedRequest.type}</p>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                    {getPriorityBadge(selectedRequest.priority)}
-                                    <div className="flex items-center">
-                                        {getStatusIcon(selectedRequest.status)}
-                                        <span className="ml-1 text-sm font-medium">{selectedRequest.status}</span>
-                                    </div>
-                                    <div className="relative">
-                                        <button className="p-1 rounded-lg hover:bg-gray-100">
-                                            <MoreVertical size={18} />
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Request details */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                                <div className="bg-gray-50 p-4 rounded-lg">
-                                    <h3 className="text-sm font-medium text-gray-500 mb-1">Requester</h3>
-                                    <p className="font-medium text-gray-900">{selectedRequest.requester}</p>
-                                </div>
-
-                                <div className="bg-gray-50 p-4 rounded-lg">
-                                    <h3 className="text-sm font-medium text-gray-500 mb-1">Assigned To</h3>
-                                    <p className="font-medium text-gray-900">{selectedRequest.assignedTo}</p>
-                                </div>
-
-                                <div className="bg-gray-50 p-4 rounded-lg">
-                                    <h3 className="text-sm font-medium text-gray-500 mb-1">Created Date</h3>
-                                    <p className="font-medium text-gray-900">{selectedRequest.createdDate}</p>
-                                </div>
-
-                                <div className="bg-gray-50 p-4 rounded-lg">
-                                    <h3 className="text-sm font-medium text-gray-500 mb-1">Last Updated</h3>
-                                    <p className="font-medium text-gray-900">{selectedRequest.updatedDate}</p>
-                                </div>
-                            </div>
-
-                            {/* Description */}
-                            <div className="mb-6">
-                                <h3 className="text-lg font-medium text-gray-900 mb-2">Description</h3>
-                                <p className="text-gray-700">{selectedRequest.description}</p>
-                            </div>
-
-                            {/* Messages/Conversation - WhatsApp style */}
-                            <div className="mb-6">
-                                <h3 className="text-lg font-medium text-gray-900 mb-4">Conversation</h3>
-
-                                <div className="bg-gray-100 rounded-xl p-4">
-                                    <div className="space-y-3 max-h-80 overflow-y-auto p-2">
-                                        {selectedRequest.messages.map((msg) => (
-                                            <div key={msg.id} className={`flex ${msg.isUser ? "justify-end" : "justify-start"}`}>
-                                                <div className={`max-w-xs lg:max-w-md rounded-lg p-3 ${msg.isUser ? "bg-green-100" : "bg-white"}`}>
-                                                    <div className="flex justify-between items-center mb-1">
-                                                        <span className="text-xs font-medium text-gray-700">{msg.sender}</span>
-                                                        <span className="text-xs text-gray-500">{msg.time}</span>
-                                                    </div>
-                                                    <p className="text-gray-800">{msg.message}</p>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-
-                                    <div className="mt-4 flex items-center">
-                                        <input
-                                            type="text"
-                                            placeholder="Type a message..."
-                                            value={comment}
-                                            onChange={(e) => setComment(e.target.value)}
-                                            onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                                            className="flex-1 px-4 py-2 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        />
-                                        <button
-                                            onClick={handleSendMessage}
-                                            className="px-4 py-2 bg-green-600 text-white rounded-r-lg hover:bg-green-700 flex items-center"
-                                        >
-                                            <Send size={18} className="mr-1" />
-                                            Send
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-
-                        </div>
-                        {/* Ticket History */}
-                        <div>
-
                             <div>
-                                <h3 className="text-lg font-medium text-gray-900 mb-4">Request History</h3>
-
-                                <div className="space-y-3">
-                                    {selectedRequest.history.map((item, index) => (
-                                        <div key={index} className="flex">
-                                            <div className="flex flex-col items-center mr-4">
-                                                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                                                {index < selectedRequest.history.length - 1 && (
-                                                    <div className="w-0.5 h-12 bg-gray-300"></div>
-                                                )}
-                                            </div>
-                                            <div className="mb-4">
-                                                <p className="text-sm font-medium text-gray-900">{item.action}</p>
-                                                <p className="text-xs text-gray-500">By {item.by} on {item.date}</p>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Reply Text</label>
+                                <textarea
+                                    name="reply_text"
+                                    value={chatData.reply_text}
+                                    onChange={handleChatInputChange}
+                                    rows={4}
+                                    className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    placeholder="Response or reply..."
+                                />
                             </div>
+                        </div>
 
-                            {/* Action buttons */}
-                            <div className="bg-white rounded-lg shadow-sm p-4 mt-4 flex justify-between">
-                                <div className="space-x-2">
-                                    {selectedRequest.status === "Closed" ? (
-                                        <button
-                                            onClick={() => updateRequestStatus("Reopened")}
-                                            className="px-4 py-2 bg-blue-100 text-blue-800 rounded-lg hover:bg-blue-200"
-                                        >
-                                            Reopen Request
-                                        </button>
-                                    ) : (
-                                        <>
-                                            <button
-                                                onClick={() => updateRequestStatus("In Progress")}
-                                                className="px-4 py-2 bg-yellow-100 text-yellow-800 rounded-lg m-4 hover:bg-yellow-200"
-                                            >
-                                                Mark In Progress
-                                            </button>
-                                            <button
-                                                onClick={() => updateRequestStatus("Closed")}
-                                                className="px-4 py-2 bg-green-100 text-green-800 rounded-lg m-4 hover:bg-green-200"
-                                            >
-                                                Close Request
-                                            </button>
-                                        </>
-                                    )}
-                                </div>
-
-                                <div className="space-x-2">
-                                    <button
-                                        onClick={() => handleEdit(selectedRequest)}
-                                        className="px-4 py-2 bg-gray-100 text-gray-800 rounded-lg m-4 hover:bg-gray-200 flex items-center"
-                                    >
-                                        <Edit size={16} className="mr-1" />
-                                        Edit
-                                    </button>
-                                    <button
-                                        onClick={() => handleDelete(selectedRequest.id)}
-                                        className="px-4 py-2 bg-red-100 text-red-800 rounded-lg hover:bg-red-200 flex items-center"
-                                    >
-                                        <Trash2 size={16} className="mr-1" />
-                                        Delete
-                                    </button>
-                                </div>
-                            </div>
+                        <div className="flex justify-end space-x-3 p-6 border-t">
+                            <button
+                                onClick={handleCloseModal}
+                                disabled={saving}
+                                className="px-4 py-2 border rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleSaveChat}
+                                disabled={saving}
+                                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center"
+                            >
+                                {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                                <MessageSquare className="h-4 w-4 mr-2" />
+                                Update Chat
+                            </button>
                         </div>
                     </div>
                 </div>
-            </div>
-        );
-    }
+            )}
+
+            {/* Notes Update Modal */}
+            {isNotesModalOpen && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                    <div className="bg-white rounded-lg shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                        <div className="flex justify-between items-center p-6 border-b">
+                            <h2 className="text-xl font-semibold text-gray-800">Update Notes</h2>
+                            <button onClick={handleCloseModal} className="text-gray-400 hover:text-gray-600">
+                                ✕
+                            </button>
+                        </div>
+
+                        <div className="p-6 grid grid-cols-1 gap-4">
+                            {error && (
+                                <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                                    <div className="text-red-600 text-sm">{error}</div>
+                                </div>
+                            )}
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                                <textarea
+                                    name="notes"
+                                    value={notesData.notes}
+                                    onChange={handleNotesInputChange}
+                                    rows={6}
+                                    className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    placeholder="Update notes for this request..."
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex justify-end space-x-3 p-6 border-t">
+                            <button
+                                onClick={handleCloseModal}
+                                disabled={saving}
+                                className="px-4 py-2 border rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleSaveNotes}
+                                disabled={saving}
+                                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center"
+                            >
+                                {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                                <Save className="h-4 w-4 mr-2" />
+                                Update Notes
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* SAP Assignment Modal */}
+            {isSapModalOpen && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                    <div className="bg-white rounded-lg shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                        <div className="flex justify-between items-center p-6 border-b">
+                            <h2 className="text-xl font-semibold text-gray-800">Assign SAP Item</h2>
+                            <button onClick={handleCloseModal} className="text-gray-400 hover:text-gray-600">
+                                ✕
+                            </button>
+                        </div>
+
+                        <div className="p-6 grid grid-cols-1 gap-4">
+                            {error && (
+                                <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                                    <div className="text-red-600 text-sm">{error}</div>
+                                </div>
+                            )}
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">SAP Item ID *</label>
+                                <input
+                                    type="text"
+                                    name="sap_item"
+                                    value={sapData.sap_item}
+                                    onChange={handleSapInputChange}
+                                    className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    placeholder="Enter SAP Item ID"
+                                />
+                                <p className="text-xs text-gray-500 mt-1">This will assign the SAP item to the request and close it</p>
+                            </div>
+                        </div>
+
+                        <div className="flex justify-end space-x-3 p-6 border-t">
+                            <button
+                                onClick={handleCloseModal}
+                                disabled={saving}
+                                className="px-4 py-2 border rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleSaveSap}
+                                disabled={saving || !sapData.sap_item}
+                                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 flex items-center"
+                            >
+                                {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                                <Tag className="h-4 w-4 mr-2" />
+                                Assign SAP Item
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
 }

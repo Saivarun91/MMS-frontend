@@ -21,7 +21,7 @@ export default function DashboardHome() {
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
-                <h1 className="text-2xl font-bold text-gray-800">Dashboard Overview</h1>
+                <h1 className="font-default text-2xl font-bold text-gray-800">Dashboard Overview</h1>
                 <div className="flex items-center space-x-2 bg-white px-4 py-2 rounded-lg shadow-sm">
                     <Calendar className="w-4 h-4 text-gray-500" />
                     <span className="text-sm text-gray-600">Today: {new Date().toLocaleDateString()}</span>
@@ -37,7 +37,7 @@ export default function DashboardHome() {
                     >
                         <div className="flex justify-between items-start">
                             <div>
-                                <p className="text-gray-500 text-sm font-medium">{stat.name}</p>
+                                <p className="font-default text-gray-500 text-sm font-medium">{stat.name}</p>
                                 <h2 className="text-3xl font-bold text-gray-800 mt-1">{stat.value}</h2>
                                 <div className={`flex items-center mt-2 ${stat.trend === 'up' ? 'text-green-600' : 'text-red-600'}`}>
                                     <TrendingUp className={`w-4 h-4 ${stat.trend === 'down' ? 'rotate-180' : ''}`} />
@@ -58,7 +58,7 @@ export default function DashboardHome() {
                 {/* Recent Activity */}
                 <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
                     <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-lg font-semibold text-gray-800">Recent Activity</h2>
+                        <h2 className="font-default text-lg font-semibold text-gray-800">Recent Activity</h2>
                         <button className="text-sm text-blue-600 hover:text-blue-800">View All</button>
                     </div>
                     <div className="space-y-4">
@@ -82,7 +82,7 @@ export default function DashboardHome() {
 
                 {/* Quick Actions */}
                 <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                    <h2 className="text-lg font-semibold text-gray-800 mb-4">Quick Actions</h2>
+                    <h2 className="font-default text-lg font-semibold text-gray-800 mb-4">Quick Actions</h2>
                     <div className="grid grid-cols-2 gap-4">
                         <button className="flex flex-col items-center justify-center p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors">
                             <ClipboardList className="w-8 h-8 text-blue-600 mb-2" />

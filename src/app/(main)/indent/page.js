@@ -1,58 +1,94 @@
 // app/indent/page.js
 "use client";
 import { useState, useEffect } from "react";
-import { Plus, Trash2, ShoppingCart, Download, Upload, FileText, Package, ArrowLeft } from "lucide-react";
+import { Plus, Trash2, ShoppingCart, Download, Upload, FileText, Package, ArrowLeft, Loader2 } from "lucide-react";
+import { fetchRequests, createRequest, updateRequest, deleteRequest } from "../../../lib/api";
+import {useAuth} from "@/context/AuthContext";
 
 export default function IndentPage() {
-    const [indentItems, setIndentItems] = useState([
-        { id: 1, material: "MAT001", description: "Steel Pipe 2-inch", quantity: 10, unit: "pcs" },
-        { id: 2, material: "MAT002", description: "Iron Rod 10mm", quantity: 25, unit: "pcs" },
-        { id: 3, material: "MAT005", description: "Copper Wire 4mm", quantity: 5, unit: "rolls" },
-    ]);
-    const [newItem, setNewItem] = useState({ material: "", description: "", quantity: 1, unit: "pcs" });
+    const [requests, setRequests] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState(null);
+    const [newItem, setNewItem] = useState({ 
+        user_text: "", 
+        reply_text: "", 
+        notes: "", 
+        sap_item: "", 
+        closetime: "", 
+        status: "", 
+        timetaken: "" 
+    });
     const [userName, setUserName] = useState("");
-
+    const {user,token,role} = useAuth();
     useEffect(() => {
-        // Get user info from localStorage
-        const name = localStorage.getItem("userName") || "User";
-        setUserName(name);
+        // // Get user info from localStorage
+        // const name = localStorage.getItem("userName") || "User";
+        setUserName(user);
+        loadRequests();
     }, []);
 
-    const addItem = () => {
-        if (!newItem.material || !newItem.description) {
-            const event = new CustomEvent('showToast', {
-                detail: { message: "Please enter material details", type: 'error' }
-            });
-            window.dispatchEvent(event);
+    const loadRequests = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            // const token = localStorage.getItem("token");
+            const data = await fetchRequests(token);
+            setRequests(data);
+        } catch (err) {
+            setError("Failed to load requests: " + (err.response?.data?.error || err.message));
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const addItem = async () => {
+        if (!newItem.user_text) {
+            setError("Please enter user text");
             return;
         }
 
-        setIndentItems([...indentItems, { ...newItem, id: Date.now() }]);
-        setNewItem({ material: "", description: "", quantity: 1, unit: "pcs" });
-
-        const event = new CustomEvent('showToast', {
-            detail: { message: "Item added to indent", type: 'success' }
-        });
-        window.dispatchEvent(event);
+        try {
+            setSaving(true);
+            setError(null);
+            // const token = localStorage.getItem("token");
+            await createRequest(token, newItem);
+            setNewItem({ 
+                user_text: "", 
+                reply_text: "", 
+                notes: "", 
+                sap_item: "", 
+                closetime: "", 
+                status: "", 
+                timetaken: "" 
+            });
+            await loadRequests();
+        } catch (err) {
+            setError("Failed to add request: " + (err.response?.data?.error || err.message));
+        } finally {
+            setSaving(false);
+        }
     };
 
-    const removeItem = (id) => {
-        setIndentItems(indentItems.filter(item => item.id !== id));
-
-        const event = new CustomEvent('showToast', {
-            detail: { message: "Item removed from indent", type: 'info' }
-        });
-        window.dispatchEvent(event);
+    const removeItem = async (request_id) => {
+        if (window.confirm("Are you sure you want to delete this request?")) {
+            try {
+                setError(null);
+                //  const token = localStorage.getItem("token");
+                await deleteRequest(token, request_id);
+                await loadRequests();
+            } catch (err) {
+                setError("Failed to delete request: " + (err.response?.data?.error || err.message));
+            }
+        }
     };
 
     const submitIndent = () => {
-        // Simulate API call
-        setTimeout(() => {
-            const event = new CustomEvent('showToast', {
-                detail: { message: "Indent submitted successfully!", type: 'success' }
-            });
-            window.dispatchEvent(event);
-        }, 1000);
+        // This could be enhanced to submit all pending requests
+        const event = new CustomEvent('showToast', {
+            detail: { message: "Indent submitted successfully!", type: 'success' }
+        });
+        window.dispatchEvent(event);
     };
 
     return (
@@ -60,15 +96,27 @@ export default function IndentPage() {
             <div className="max-w-6xl mx-auto">
                 {/* Header */}
                 <div className="flex items-center mb-6">
-
                     <div>
-                        <h1 className="text-2xl font-bold text-gray-800">Create Indent</h1>
+                        <h1 className="font-default text-2xl font-bold text-gray-800">Create Indent</h1>
                         <p className="text-gray-600">Create and manage material indents for procurement</p>
                     </div>
                 </div>
 
+                {/* Error Message */}
+                {error && (
+                    <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                        <p className="text-red-700">{error}</p>
+                        <button
+                            onClick={() => setError(null)}
+                            className="mt-2 text-red-600 hover:text-red-800 text-sm"
+                        >
+                            Dismiss
+                        </button>
+                    </div>
+                )}
+
                 {/* Stats Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                {/* <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                     <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
                         <div className="flex items-center">
                             <div className="bg-blue-100 p-3 rounded-lg mr-4">
@@ -102,7 +150,7 @@ export default function IndentPage() {
                             </div>
                         </div>
                     </div>
-                </div>
+                </div> */}
 
                 {/* Action Buttons */}
                 <div className="flex flex-wrap gap-3 mb-6">
@@ -118,97 +166,139 @@ export default function IndentPage() {
 
                 {/* Add Item Form */}
                 <div className="bg-white rounded-2xl p-6 shadow-md border border-gray-100 mb-8">
-                    <h2 className="text-xl font-semibold text-gray-800 mb-4">Add New Item</h2>
+                    <h2 className="text-xl font-semibold text-gray-800 mb-4">Add New Request</h2>
 
-                    <div className="grid grid-cols-1 md:grid-cols-12 gap-4 mb-4">
-                        <div className="md:col-span-3">
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Material Code</label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">User Text *</label>
                             <input
                                 type="text"
-                                placeholder="e.g., MAT001"
-                                value={newItem.material}
-                                onChange={(e) => setNewItem({ ...newItem, material: e.target.value })}
+                                placeholder="Enter your request details"
+                                value={newItem.user_text}
+                                onChange={(e) => setNewItem({ ...newItem, user_text: e.target.value })}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
                         </div>
-                        <div className="md:col-span-5">
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">SAP Item</label>
                             <input
                                 type="text"
-                                placeholder="Material description"
-                                value={newItem.description}
-                                onChange={(e) => setNewItem({ ...newItem, description: e.target.value })}
+                                placeholder="SAP Item ID"
+                                value={newItem.sap_item}
+                                onChange={(e) => setNewItem({ ...newItem, sap_item: e.target.value })}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Reply Text</label>
+                            <input
+                                type="text"
+                                placeholder="Reply text"
+                                value={newItem.reply_text}
+                                onChange={(e) => setNewItem({ ...newItem, reply_text: e.target.value })}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                            <input
+                                type="text"
+                                placeholder="Status"
+                                value={newItem.status}
+                                onChange={(e) => setNewItem({ ...newItem, status: e.target.value })}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Close Time</label>
+                            <input
+                                type="date"
+                                value={newItem.closetime}
+                                onChange={(e) => setNewItem({ ...newItem, closetime: e.target.value })}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Time Taken</label>
+                            <input
+                                type="text"
+                                placeholder="Time taken"
+                                value={newItem.timetaken}
+                                onChange={(e) => setNewItem({ ...newItem, timetaken: e.target.value })}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
                         </div>
                         <div className="md:col-span-2">
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Quantity</label>
-                            <input
-                                type="number"
-                                min="1"
-                                value={newItem.quantity}
-                                onChange={(e) => setNewItem({ ...newItem, quantity: parseInt(e.target.value) || 1 })}
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                            <textarea
+                                placeholder="Additional notes"
+                                value={newItem.notes}
+                                onChange={(e) => setNewItem({ ...newItem, notes: e.target.value })}
+                                rows={3}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
-                        </div>
-                        <div className="md:col-span-2">
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Unit</label>
-                            <select
-                                value={newItem.unit}
-                                onChange={(e) => setNewItem({ ...newItem, unit: e.target.value })}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            >
-                                <option value="pcs">Pieces</option>
-                                <option value="kg">Kilograms</option>
-                                <option value="m">Meters</option>
-                                <option value="rolls">Rolls</option>
-                                <option value="box">Box</option>
-                            </select>
                         </div>
                     </div>
 
                     <button
                         onClick={addItem}
-                        className="bg-gradient-to-r from-[#002147] to-[#7F56D9] text-white px-4 py-2 rounded-lg font-medium hover:opacity-90 transition flex items-center gap-2 shadow-md"
+                        disabled={saving}
+                        className="bg-gradient-to-r from-[#002147] to-[#7F56D9] text-white px-4 py-2 rounded-lg font-medium hover:opacity-90 transition flex items-center gap-2 shadow-md disabled:opacity-50"
                     >
+                        {saving && <Loader2 className="animate-spin h-4 w-4" />}
                         <Plus size={18} />
-                        Add Item
+                        Add Request
                     </button>
                 </div>
 
-                {/* Indent Items Table */}
+                {/* Requests Table */}
                 <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
                     <div className="p-6 border-b border-gray-200 flex justify-between items-center">
-                        <h2 className="text-xl font-semibold text-gray-800">Indent Items</h2>
+                        <h2 className="text-xl font-semibold text-gray-800">Requests</h2>
                         <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-medium">
-                            {indentItems.length} items
+                            {requests.length} requests
                         </span>
                     </div>
 
-                    {indentItems.length > 0 ? (
+                    {loading ? (
+                        <div className="flex items-center justify-center py-12">
+                            <Loader2 className="animate-spin h-8 w-8 text-blue-600" />
+                            <span className="ml-2 text-gray-600">Loading requests...</span>
+                        </div>
+                    ) : requests.length > 0 ? (
                         <div className="overflow-x-auto">
                             <table className="w-full">
                                 <thead className="bg-gray-50">
                                     <tr>
-                                        <th className="p-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Material</th>
-                                        <th className="p-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
-                                        <th className="p-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
-                                        <th className="p-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit</th>
-                                        <th className="p-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                        <th className="font-default p-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Request ID</th>
+                                        <th className="font-default p-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User Text</th>
+                                        <th className="font-default p-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SAP Item</th>
+                                        <th className="font-default p-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                        <th className="font-default p-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
+                                        <th className="font-default p-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-200">
-                                    {indentItems.map((item) => (
-                                        <tr key={item.id} className="hover:bg-gray-50 transition-colors">
-                                            <td className="p-4 font-mono text-blue-600 font-semibold">{item.material}</td>
-                                            <td className="p-4">{item.description}</td>
-                                            <td className="p-4 font-medium">{item.quantity}</td>
-                                            <td className="p-4 uppercase text-gray-600">{item.unit}</td>
+                                    {requests.map((request) => (
+                                        <tr key={request.request_id} className="hover:bg-gray-50 transition-colors">
+                                            <td className="font-default p-4 font-mono text-blue-600 font-semibold">{request.request_id}</td>
+                                            <td className="p-4">{request.user_text || '-'}</td>
+                                            <td className="p-4">{request.sap_item || '-'}</td>
+                                            <td className="p-4">
+                                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                                    request.status === 'completed' ? 'bg-green-100 text-green-800' :
+                                                    request.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                                    'bg-gray-100 text-gray-800'
+                                                }`}>
+                                                    {request.status || 'Unknown'}
+                                                </span>
+                                            </td>
+                                            <td className="p-4 text-sm text-gray-600">{request.created || '-'}</td>
                                             <td className="p-4">
                                                 <button
-                                                    onClick={() => removeItem(item.id)}
+                                                    onClick={() => removeItem(request.request_id)}
                                                     className="text-red-500 hover:text-red-700 transition p-1 rounded-full hover:bg-red-50"
-                                                    title="Remove item"
+                                                    title="Delete request"
                                                 >
                                                     <Trash2 size={18} />
                                                 </button>
@@ -223,12 +313,12 @@ export default function IndentPage() {
                             <div className="bg-gray-100 p-4 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
                                 <ShoppingCart className="h-8 w-8 text-gray-400" />
                             </div>
-                            <h3 className="text-lg font-medium text-gray-700 mb-1">Your indent is empty</h3>
-                            <p className="text-gray-500">Add materials to create your indent.</p>
+                            <h3 className="text-lg font-medium text-gray-700 mb-1">No requests found</h3>
+                            <p className="text-gray-500">Add requests to see them here.</p>
                         </div>
                     )}
 
-                    {indentItems.length > 0 && (
+                    {requests.length > 0 && (
                         <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end">
                             <button
                                 onClick={submitIndent}

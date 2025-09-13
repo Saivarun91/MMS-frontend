@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import {
-  Plus, Edit, Trash2, Search, Building, Info, Loader2, X
+  Plus, Edit, Trash2, Search, Building, Info, Loader2
 } from "lucide-react";
 import { 
   fetchCompanies, 
@@ -22,7 +22,6 @@ export default function CompaniesPage() {
   const {user,token,role} = useAuth();
   const [formData, setFormData] = useState({
     company_name: "",
-    contact: "",
   });
 
   // Load data on component mount
@@ -33,8 +32,7 @@ export default function CompaniesPage() {
   const loadCompanies = async () => {
     try {
       setLoading(true);
-      setError(null);
-      const token = localStorage.getItem("token");
+      // const token = user.token;
       if (!token) {
         setError("No authentication token found");
         return;
@@ -43,7 +41,7 @@ export default function CompaniesPage() {
       const data = await fetchCompanies(token);
       setCompanies(data || []);
     } catch (err) {
-      setError("Failed to load companies: " + (err.response?.data?.message || err.message || "Unknown error"));
+      setError("Failed to load companies: " + (err.message || "Unknown error"));
       console.error("Error loading companies:", err);
     } finally {
       setLoading(false);
@@ -53,8 +51,7 @@ export default function CompaniesPage() {
   // Filter companies
   const filteredCompanies = companies.filter(company => {
     const matchesSearch =
-      (company.company_name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (company.contact || "").toLowerCase().includes(searchTerm.toLowerCase());
+      (company.company_name || "").toLowerCase().includes(searchTerm.toLowerCase());
 
     return matchesSearch;
   });
@@ -66,7 +63,6 @@ export default function CompaniesPage() {
     setEditingCompany(null);
     setFormData({
       company_name: "",
-      contact: "",
     });
     setIsModalOpen(true);
     setError(null);
@@ -76,7 +72,6 @@ export default function CompaniesPage() {
     setEditingCompany(company);
     setFormData({
       company_name: company.company_name,
-      contact: company.contact || "",
     });
     setIsModalOpen(true);
     setError(null);
@@ -97,15 +92,14 @@ export default function CompaniesPage() {
   };
 
   const handleSaveCompany = async () => {
-    if (!formData.company_name.trim()) {
+    if (!formData.company_name) {
       setError("Please fill in required field: Company Name");
       return;
     }
 
     try {
       setSaving(true);
-      setError(null);
-      const token = localStorage.getItem("token");
+      // const token = localStorage.getItem("token");
       if (!token) {
         setError("No authentication token found");
         return;
@@ -120,7 +114,7 @@ export default function CompaniesPage() {
       await loadCompanies();
       handleCloseModal();
     } catch (err) {
-      setError("Failed to save company: " + (err.response?.data?.message || err.message || "Unknown error"));
+      setError("Failed to save company: " + (err.message || "Unknown error"));
       console.error("Error saving company:", err);
     } finally {
       setSaving(false);
@@ -130,8 +124,7 @@ export default function CompaniesPage() {
   const handleDelete = async (company_name) => {
     if (window.confirm("Are you sure you want to delete this company? This action cannot be undone.")) {
       try {
-        setError(null);
-        const token = localStorage.getItem("token");
+        // const token = localStorage.getItem("token");
         if (!token) {
           setError("No authentication token found");
           return;
@@ -140,33 +133,30 @@ export default function CompaniesPage() {
         await deleteCompany(token, company_name);
         await loadCompanies();
       } catch (err) {
-        setError("Failed to delete company: " + (err.response?.data?.message || err.message || "Unknown error"));
+        setError("Failed to delete company: " + (err.message || "Unknown error"));
         console.error("Error deleting company:", err);
       }
     }
   };
-  console.log("role",role);
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex justify-between items-center mb-6">
           <div>
-            <h1 className="font-default text-3xl font-bold text-gray-900 flex items-center mb-2">
-              <div className="bg-blue-100 p-3 rounded-xl mr-4">
-                <Building className="text-blue-600" size={32} />
-              </div>
+            <h1 className="font-default text-2xl font-bold text-gray-800 flex items-center">
+              <Building className="mr-2" size={28} />
               Companies Management
             </h1>
-            <p className="text-gray-600 text-lg">Manage company information and organizational structure</p>
+            <p className="text-gray-600">Manage company information and organizational structure</p>
           </div>
-          {role === "Admin" && (
+          {role === "MDGT" && (
             <button
               onClick={handleAddNew}
-              className="flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+              className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
             >
-              <Plus size={20} className="mr-2" />
+              <Plus size={18} className="mr-2" />
               Add Company
             </button>
           )}
@@ -179,10 +169,10 @@ export default function CompaniesPage() {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
               <input
                 type="text"
-                placeholder="Search companies by name or contact..."
+                placeholder="Search companies by name..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
           </div>
@@ -211,38 +201,36 @@ export default function CompaniesPage() {
           </div>
         ) : (
           /* Companies Table */
-          <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200">
+          <div className="bg-white rounded-lg shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
+                <thead className="bg-gray-50">
                   <tr>
-                    <th className="font-default px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Company Name</th>
-                    <th className="font-default px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Contact</th>
-                    <th className="font-default px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Created</th>
-                    <th className="font-default px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Updated</th>
-                    <th className="font-default px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Actions</th>
+                    <th className="font-default px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Company Name</th>
+                    <th className="font-default px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created</th>
+                    <th className="font-default px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Updated</th>
+                    <th className="font-default px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {filteredCompanies.length > 0 ? (
                     filteredCompanies.map((company) => (
-                      <tr key={company.company_name} className="hover:bg-gray-50 transition-colors duration-200">
+                      <tr key={company.company_name} className="hover:bg-gray-50">
                         <td className="font-default px-6 py-4 text-sm font-medium text-gray-900">{company.company_name}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900">{company.contact || "N/A"}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900">{company.created ? new Date(company.created).toLocaleDateString() : "N/A"}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900">{company.updated ? new Date(company.updated).toLocaleDateString() : "N/A"}</td>
+                        <td className="px-6 py-4 text-sm text-gray-900">{company.created}</td>
+                        <td className="px-6 py-4 text-sm text-gray-900">{company.updated}</td>
                         <td className="px-6 py-4 text-sm text-gray-900">
                           <div className="flex space-x-2">
                             <button
                               onClick={() => handleEdit(company)}
-                              className="text-blue-600 hover:text-blue-800 transition-colors duration-200 p-1 rounded hover:bg-blue-50"
+                              className="text-blue-600 hover:text-blue-800"
                               title="Edit"
                             >
                               <Edit size={16} />
                             </button>
                             <button
                               onClick={() => handleDelete(company.company_name)}
-                              className="text-red-600 hover:text-red-800 transition-colors duration-200 p-1 rounded hover:bg-red-50"
+                              className="text-red-600 hover:text-red-800"
                               title="Delete"
                             >
                               <Trash2 size={16} />
@@ -253,7 +241,7 @@ export default function CompaniesPage() {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan="5" className="px-6 py-4 text-center text-sm text-gray-500">
+                      <td colSpan="4" className="px-6 py-4 text-center text-sm text-gray-500">
                         {companies.length === 0 
                           ? "No companies found. Add a new company to get started." 
                           : "No companies found matching your criteria."}
@@ -278,7 +266,7 @@ export default function CompaniesPage() {
                 <li>Companies represent different organizations in the system</li>
                 <li>Users are associated with companies for organizational structure</li>
                 <li>Use the search bar to find companies by name</li>
-                <li>Click the &quot;Add Company&quot; button to create new companies</li>
+                <li>Click the "Add Company" button to create new companies</li>
                 <li>Use the edit and delete icons to modify or remove companies</li>
               </ul>
             </div>
@@ -289,14 +277,13 @@ export default function CompaniesPage() {
       {/* Company Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center p-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
-              <h2 className="text-2xl font-bold text-gray-800 flex items-center">
-                <Building className="mr-3 text-blue-600" size={24} />
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center p-6 border-b">
+              <h2 className="text-xl font-semibold text-gray-800">
                 {editingCompany ? "Edit Company" : "Add New Company"}
               </h2>
-              <button onClick={handleCloseModal} className="text-gray-400 hover:text-gray-600 transition-colors duration-200 p-2 rounded-lg hover:bg-gray-100">
-                <X size={20} />
+              <button onClick={handleCloseModal} className="text-gray-400 hover:text-gray-600">
+                ✕
               </button>
             </div>
 
@@ -314,40 +301,25 @@ export default function CompaniesPage() {
                   name="company_name"
                   value={formData.company_name}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                  placeholder="Enter company name"
-                  maxLength={20}
+                  className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Company Name"
                 />
-                <p className="text-xs text-gray-500 mt-1">Enter the full company name (max 20 characters)</p>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Contact</label>
-                <input
-                  type="text"
-                  name="contact"
-                  value={formData.contact}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                  placeholder="Enter contact information"
-                  maxLength={20}
-                />
-                <p className="text-xs text-gray-500 mt-1">Optional contact information (max 20 characters)</p>
+                <p className="text-xs text-gray-500 mt-1">Enter the full company name</p>
               </div>
             </div>
 
-            <div className="flex justify-end space-x-3 p-6 border-t border-gray-200 bg-gray-50">
+            <div className="flex justify-end space-x-3 p-6 border-t">
               <button
                 onClick={handleCloseModal}
                 disabled={saving}
-                className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-all duration-200"
+                className="px-4 py-2 border rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSaveCompany}
-                disabled={saving || !formData.company_name.trim()}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center transition-all duration-200 shadow-lg hover:shadow-xl"
+                disabled={saving || !formData.company_name}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center"
               >
                 {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
                 {editingCompany ? "Save Changes" : "Add Company"}

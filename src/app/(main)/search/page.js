@@ -1,197 +1,199 @@
-// SearchPage.js - Enhanced with search functionality and better UI
 "use client";
-import { useState, useEffect } from "react";
-import MaterialTable from "@/components/MaterialTable";
-import AttributeFilter from "@/components/AttributeFilter";
-import { Search, Filter, Download, Upload } from "lucide-react";
+import { useState } from "react";
+import { useRouter } from "next/navigation";            
+import { FiPackage, FiTrendingUp, FiShoppingCart } from "react-icons/fi";
+import { LogOut } from "lucide-react";
+export default function MaterialSearchPage() {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedType, setSelectedType] = useState("material");
+  const [selectedGroup, setSelectedGroup] = useState("");
+  const router = useRouter();   
+  const handleLogout = () => {
+    // if (typeof window !== "undefined") {
+    //   localStorage.removeItem("isLoggedIn");
+    //   localStorage.removeItem("userName");
+    // }
+    window.location.href = "/login";
+  };
+  
+  const stats = [
+    { label: "Total Materials", value: "1,248", change: "+12% from last month", icon: FiPackage },
+    { label: "Active Requests", value: "42", change: "+5% from last week", icon: FiShoppingCart },
+    { label: "Catalog Growth", value: "28%", change: "+8% from last quarter", icon: FiTrendingUp }
+  ];
+  
+  const materialGroups = [
+    { code: "MEASTMULT", name: "MEASURING TOOLS / INSTRUMENTS – MULTIMETER ELECTRICAL" },
+    { code: "GASESARGO", name: "GASES – ARGON" },
+    { code: "GASESNITR", name: "GASES – NITROGEN" },
+    { code: "GASESOXYG", name: "GASES – OXYGEN" },
+    { code: "GASESAMMO", name: "GASES – AMMONIA" },
+    { code: "FASTBOLT", name: "FASTENERS – BOLTS" },
+    { code: "FASTNUTS", name: "FASTENERS – NUTS" },
+    { code: "TOOLSHAND", name: "TOOLS – HAND TOOLS" },
+    { code: "TOOLPOWR", name: "TOOLS – POWER TOOLS" },
+    { code: "ELECWIRE", name: "ELECTRICAL – WIRES & CABLES" },
+    { code: "PLUMBPIPE", name: "PLUMBING – PIPES & FITTINGS" },
+    { code: "SAFTPERS", name: "SAFETY – PERSONAL PROTECTIVE EQUIPMENT" },
+  ];
 
-export default function SearchPage() {
-    const [searchQuery, setSearchQuery] = useState("");
-    const [isSearching, setIsSearching] = useState(false);
-    const [results, setResults] = useState([]);
-    const [activeTab, setActiveTab] = useState("name"); // 'name' or 'attributes'
-    const [selectedFilters, setSelectedFilters] = useState([]);
+  const filteredGroups = materialGroups.filter((group) =>
+    group.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    group.code.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
-    // Sample data - in a real app this would come from an API
-    const sampleMaterials = [
-        { number: "MAT001", description: "Steel Pipe 2-inch diameter", match: 92, category: "Metal Pipes" },
-        { number: "MAT002", description: "Iron Rod 10mm", match: 87, category: "Construction Materials" },
-        { number: "MAT003", description: "PVC Pipe 1.5-inch", match: 78, category: "Plumbing" },
-        { number: "MAT004", description: "Cement Grade 53", match: 95, category: "Construction Materials" },
-        { number: "MAT005", description: "Copper Wire 4mm", match: 82, category: "Electrical" },
-    ];
+  const handleGroupSelect = (code) => setSelectedGroup(code);
+  const handleSelectClick = () => {
+    if (selectedGroup) router.push(`/materials/${selectedGroup}`);
+  };
 
-    const handleSearch = () => {
-        if (!searchQuery.trim()) {
-            setResults([]);
-            return;
-        }
-
-        setIsSearching(true);
-
-        // Simulate API call delay
-        setTimeout(() => {
-            const filteredResults = sampleMaterials.filter(material =>
-                material.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                material.number.toLowerCase().includes(searchQuery.toLowerCase())
-            );
-
-            setResults(filteredResults);
-            setIsSearching(false);
-        }, 800);
-    };
-
-    const handleAdd = (material) => {
-        console.log("Add to Indent:", material);
-        // Show a toast notification
-        const event = new CustomEvent('showToast', {
-            detail: { message: `${material.description} added to indent`, type: 'success' }
-        });
-        window.dispatchEvent(event);
-    };
-
-    const handleFilterSelect = (filterName) => {
-        setSelectedFilters(prev => {
-            if (prev.includes(filterName)) {
-                return prev.filter(f => f !== filterName);
-            } else {
-                return [...prev, filterName];
-            }
-        });
-    };
-
-    useEffect(() => {
-        if (selectedFilters.length > 0) {
-            const filtered = sampleMaterials.filter(m =>
-                selectedFilters.includes(m.category)
-            );
-            setResults(filtered);
-        } else if (searchQuery) {
-            handleSearch();
-        } else {
-            setResults([]);
-        }
-    }, [selectedFilters]);
-
-    return (
-        <div className="space-y-6">
-            {/* Header with search */}
-            <div className="bg-white rounded-2xl p-6 shadow-xl">
-                <h1 className="text-2xl font-bold text-[#002147] mb-4">Material Search</h1>
-
-                {/* Search Tabs */}
-                <div className="flex border-b border-gray-200 mb-4">
-                    <button
-                        className={`px-4 py-2 font-medium flex items-center gap-2 ${activeTab === 'name' ? 'border-b-2 border-[#7F56D9] text-[#7F56D9]' : 'text-gray-500'}`}
-                        onClick={() => setActiveTab('name')}
-                    >
-                        <Search size={18} />
-                        Search by Name
-                    </button>
-                    <button
-                        className={`px-4 py-2 font-medium flex items-center gap-2 ${activeTab === 'attributes' ? 'border-b-2 border-[#7F56D9] text-[#7F56D9]' : 'text-gray-500'}`}
-                        onClick={() => setActiveTab('attributes')}
-                    >
-                        <Filter size={18} />
-                        Search by Attributes
-                    </button>
-                </div>
-
-                {/* Search Input */}
-                {activeTab === 'name' && (
-                    <div className="flex gap-3">
-                        <div className="flex-1 relative">
-                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-                            <input
-                                type="text"
-                                placeholder="Search by material name or number..."
-                                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7F56D9]"
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                            />
-                        </div>
-                        <button
-                            onClick={handleSearch}
-                            disabled={isSearching}
-                            className="bg-gradient-to-r from-[#7F56D9] to-[#EC4899] text-white px-6 py-3 rounded-lg font-semibold hover:opacity-90 disabled:opacity-50 flex items-center gap-2"
-                        >
-                            {isSearching ? (
-                                <>
-                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                                    Searching...
-                                </>
-                            ) : (
-                                <>
-                                    <Search size={18} />
-                                    Search
-                                </>
-                            )}
-                        </button>
-                    </div>
-                )}
-
-                {/* Action Buttons */}
-                <div className="flex gap-3 mt-4">
-                    <button className="flex items-center gap-2 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition">
-                        <Download size={18} />
-                        Export Results
-                    </button>
-                    <button className="flex items-center gap-2 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition">
-                        <Upload size={18} />
-                        Import Materials
-                    </button>
-                </div>
-            </div>
-
-            {/* Results and Filters */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Results Panel - 2/3 width on large screens */}
-                <div className="lg:col-span-2 bg-white rounded-2xl p-6 shadow-xl">
-                    <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-xl font-bold text-[#002147]">
-                            Search Results {results.length > 0 && `(${results.length} found)`}
-                        </h2>
-
-                        {results.length > 0 && (
-                            <div className="text-sm text-gray-500">
-                                Sort by:
-                                <select className="ml-2 border rounded px-2 py-1">
-                                    <option>Relevance</option>
-                                    <option>Material Number</option>
-                                    <option>Match %</option>
-                                </select>
-                            </div>
-                        )}
-                    </div>
-
-                    {results.length > 0 ? (
-                        <MaterialTable results={results} onAdd={handleAdd} />
-                    ) : searchQuery || selectedFilters.length > 0 ? (
-                        <div className="text-center py-12 text-gray-500">
-                            <Search size={48} className="mx-auto mb-4 opacity-50" />
-                            <p>No materials found matching your criteria</p>
-                            <p className="text-sm mt-2">Try adjusting your search or filters</p>
-                        </div>
-                    ) : (
-                        <div className="text-center py-12 text-gray-500">
-                            <Search size={48} className="mx-auto mb-4 opacity-50" />
-                            <p>Search for materials by name or use the attribute filters</p>
-                        </div>
-                    )}
-                </div>
-
-                {/* Filter Panel - 1/3 width on large screens */}
-                <div className="bg-white rounded-2xl p-6 shadow-xl">
-                    <h2 className="text-xl font-bold text-[#002147] mb-4">
-                        Filters
-                    </h2>
-                    <AttributeFilter
-                        onFilterSelect={handleFilterSelect}
-                        selectedFilters={selectedFilters}
-                    />
-                </div>
-            </div>
+  return (
+    <div className="min-h-screen bg-gray-50 w-full">
+      {/* Full-width container */}
+      
+      <div className="w-full bg-white shadow-md overflow-hidden">
+        
+        {/* Header */}
+        <div className="bg-blue-800 text-white p-6 w-full">
+          <h1 className="text-2xl font-bold">Material & Service Catalog</h1>
         </div>
-    );
+        
+        
+        
+        {/* Breadcrumb */}
+        {/* <div className="flex p-4 bg-gray-100 text-sm text-gray-600 w-full">
+          <span className="cursor-pointer hover:text-blue-600">Home</span>
+          <span className="mx-2">/</span>
+          <span className="cursor-pointer hover:text-blue-600">Procurement</span>
+          <span className="mx-2">/</span>
+          <span className="font-medium text-blue-600">Material Search</span>
+        </div> */}
+        
+        {/* Main content */}
+      
+        <div className="flex flex-col md:flex-row p-6 w-full">
+          {/* Left Section - Search */}
+          <div className="flex flex-col w-full md:w-1/2 pr-0 md:pr-6 mb-6 md:mb-0">
+            <h2 className="text-xl font-semibold mb-4 text-gray-700">Search Criteria</h2>
+            
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Search Type</label>
+              <div className="flex space-x-6">
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="radio"
+                    name="type"
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                    checked={selectedType === "material"}
+                    onChange={() => setSelectedType("material")}
+                  />
+                  <span className="text-gray-700">Material</span>
+                </label>
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="radio"
+                    name="type"
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                    checked={selectedType === "service"}
+                    onChange={() => setSelectedType("service")}
+                  />
+                  <span className="text-gray-700">Service</span>
+                </label>
+              </div>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+              <textarea
+                placeholder="Enter material or service description here..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full h-32 p-3 border border-gray-300 rounded-md resize-none shadow-sm focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+
+            <div className="flex space-x-4">
+              <button className="bg-blue-600 text-white py-2 px-6 rounded-md shadow hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors">
+                Search
+              </button>
+              <button className="bg-gray-200 text-gray-700 py-2 px-6 rounded-md shadow hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors">
+                Clear
+              </button>
+            </div>
+
+            {/* Recent Searches */}
+            <div className="mt-8">
+              <h3 className="text-sm font-medium text-gray-700 mb-2">Recent Searches</h3>
+              <div className="flex flex-wrap gap-2">
+                <span className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-xs cursor-pointer hover:bg-gray-200">Electrical wires</span>
+                <span className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-xs cursor-pointer hover:bg-gray-200">Safety equipment</span>
+                <span className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-xs cursor-pointer hover:bg-gray-200">Hand tools</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Section - Results */}
+          <div className="flex flex-col w-full md:w-1/2">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold text-gray-700">Material Groups</h2>
+              <span className="text-sm text-gray-500">{filteredGroups.length} results</span>
+            </div>
+            
+            <div className="border border-gray-200 rounded-md h-72 overflow-y-auto shadow-inner">
+              {filteredGroups.length > 0 ? (
+                filteredGroups.map((group) => (
+                  <div
+                    key={group.code}
+                    onClick={() => handleGroupSelect(group.code)}
+                    className={`p-3 border-b border-gray-100 hover:bg-blue-50 cursor-pointer transition-colors ${
+                      selectedGroup === group.code ? "bg-blue-100 border-l-4 border-l-blue-600" : ""
+                    }`}
+                  >
+                    <div className="font-semibold text-blue-700">{group.code}</div>
+                    <div className="text-sm text-gray-600">{group.name}</div>
+                  </div>
+                ))
+              ) : (
+                <div className="p-4 text-center text-gray-500">
+                  No material groups found. Try a different search term.
+                </div>
+              )}
+            </div>
+
+            <div className="mt-6 flex flex-col sm:flex-row gap-3">
+              <button className="bg-red-600 text-white py-2 px-6 rounded-md shadow hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors flex-1">
+                Material Group Not Found
+              </button>
+              
+              <button 
+                onClick={handleSelectClick}
+                disabled={!selectedGroup}
+                className={`py-2 px-6 rounded-md shadow focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors flex-1 ${
+                  selectedGroup 
+                    ? "bg-green-600 text-white hover:bg-green-700 focus:ring-green-500" 
+                    : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                }`}
+              >
+                Select Group
+              </button>
+            </div>
+
+            {/* Quick Actions */}
+            <div className="mt-6 pt-4 border-t border-gray-200">
+              <h3 className="text-sm font-medium text-gray-700 mb-2">Quick Actions</h3>
+              <div className="grid grid-cols-2 gap-3">
+                <button className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 px-3 rounded-md transition-colors">Create New Request</button>
+                <button className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 px-3 rounded-md transition-colors">View Favorites</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        {/* Footer */}
+        <div className="bg-gray-100 p-4 text-center text-xs text-gray-500 w-full">
+          © 2023 Company Name. All rights reserved. | v2.4.1
+        </div>
+      </div>
+    </div>
+  );
 }

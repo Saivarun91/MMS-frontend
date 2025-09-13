@@ -1,15 +1,17 @@
-// app/signup/page.js
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import { Eye, EyeOff, Mail, Lock, User, UserPlus, ArrowLeft, Package } from "lucide-react";
+import axios from "axios";
+import { Eye, EyeOff, Mail, Lock, User, ArrowLeft, Package, Building } from "lucide-react";
 
 export default function Signup() {
     const [formData, setFormData] = useState({
-        name: "",
+        emp_name: "",
         email: "",
         password: "",
-        confirmPassword: ""
+        confirmPassword: "",
+        company_name: "",
+        description: ""
     });
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -18,69 +20,74 @@ export default function Signup() {
 
     const handleChange = (e) => {
         const { name, value } = e.target;
-        setFormData(prev => ({
+        setFormData((prev) => ({
             ...prev,
-            [name]: value
+            [name]: value,
         }));
     };
 
     const validateForm = () => {
         const newErrors = {};
-
-        if (!formData.name) {
-            newErrors.name = "Full name is required";
-        }
-
+        if (!formData.emp_name) newErrors.emp_name = "Full name is required";
         if (!formData.email) {
             newErrors.email = "Email is required";
         } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
             newErrors.email = "Email is invalid";
         }
-
         if (!formData.password) {
             newErrors.password = "Password is required";
         } else if (formData.password.length < 6) {
             newErrors.password = "Password must be at least 6 characters";
         }
-
         if (!formData.confirmPassword) {
             newErrors.confirmPassword = "Please confirm your password";
         } else if (formData.password !== formData.confirmPassword) {
             newErrors.confirmPassword = "Passwords do not match";
         }
+        if (!formData.company_name) newErrors.company_name = "Company name is required";
+        if (!formData.description) newErrors.description = "Description is required";
 
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-
         if (!validateForm()) return;
 
         setIsLoading(true);
+        try {
+            const response = await axios.post("http://localhost:8000/employee/register/", {
+                emp_name: formData.emp_name,
+                email: formData.email,
+                password: formData.password,
+                company_name: formData.company_name,
+                description: formData.description,
+            });
 
-        // Simulate API call
-        setTimeout(() => {
-            console.log("Signup:", formData);
+            console.log("Signup success:", response.data);
 
-            // Store login state (in a real app, you'd store a token)
-            localStorage.setItem("isLoggedIn", "true");
-            localStorage.setItem("userName", formData.name.split(' ')[0]);
+            // localStorage.setItem("isLoggedIn", "true");
+            // localStorage.setItem("userName", formData.emp_name.split(" ")[0]);
 
-            setIsLoading(false);
-
-            // Show success message
-            const event = new CustomEvent('showToast', {
-                detail: { message: "Account created successfully! Redirecting...", type: 'success' }
+            const event = new CustomEvent("showToast", {
+                detail: { message: "Account created successfully! Redirecting...", type: "success" },
             });
             window.dispatchEvent(event);
 
-            // Redirect to home page (in a real app, you'd use next/navigation)
             setTimeout(() => {
                 window.location.href = "/";
             }, 1500);
-        }, 1500);
+        } catch (error) {
+            console.error("Signup error:", error.response?.data || error.message);
+
+            const event = new CustomEvent("showToast", {
+                detail: { message: error.response?.data?.error || "Signup failed. Try again.", type: "error" },
+            });
+            window.dispatchEvent(event);
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (
@@ -108,41 +115,33 @@ export default function Signup() {
 
                     <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
                         <div className="space-y-4">
+                            {/* Full Name */}
                             <div>
-                                <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-                                    Full Name
-                                </label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
                                 <div className="relative">
                                     <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
                                     <input
-                                        id="name"
-                                        name="name"
+                                        name="emp_name"
                                         type="text"
-                                        autoComplete="name"
-                                        required
                                         placeholder="Enter your full name"
-                                        className={`appearance-none relative block w-full pl-10 pr-3 py-3 border ${errors.name ? 'border-red-300' : 'border-gray-300'} placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
-                                        value={formData.name}
+                                        className={`appearance-none relative block w-full pl-10 pr-3 py-3 border ${errors.emp_name ? "border-red-300" : "border-gray-300"} rounded-lg`}
+                                        value={formData.emp_name}
                                         onChange={handleChange}
                                     />
                                 </div>
-                                {errors.name && <p className="mt-1 text-sm text-red-600">{errors.name}</p>}
+                                {errors.emp_name && <p className="mt-1 text-sm text-red-600">{errors.emp_name}</p>}
                             </div>
 
+                            {/* Email */}
                             <div>
-                                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                                    Email address
-                                </label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Email address</label>
                                 <div className="relative">
                                     <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
                                     <input
-                                        id="email"
                                         name="email"
                                         type="email"
-                                        autoComplete="email"
-                                        required
                                         placeholder="Enter your email"
-                                        className={`appearance-none relative block w-full pl-10 pr-3 py-3 border ${errors.email ? 'border-red-300' : 'border-gray-300'} placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+                                        className={`appearance-none relative block w-full pl-10 pr-3 py-3 border ${errors.email ? "border-red-300" : "border-gray-300"} rounded-lg`}
                                         value={formData.email}
                                         onChange={handleChange}
                                     />
@@ -150,74 +149,75 @@ export default function Signup() {
                                 {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email}</p>}
                             </div>
 
+                            {/* Password */}
                             <div>
-                                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-                                    Password
-                                </label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
                                 <div className="relative">
                                     <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
                                     <input
-                                        id="password"
                                         name="password"
                                         type={showPassword ? "text" : "password"}
-                                        autoComplete="new-password"
-                                        required
                                         placeholder="Create a password"
-                                        className={`appearance-none relative block w-full pl-10 pr-10 py-3 border ${errors.password ? 'border-red-300' : 'border-gray-300'} placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+                                        className={`appearance-none relative block w-full pl-10 pr-10 py-3 border ${errors.password ? "border-red-300" : "border-gray-300"} rounded-lg`}
                                         value={formData.password}
                                         onChange={handleChange}
                                     />
-                                    <button
-                                        type="button"
-                                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                                        onClick={() => setShowPassword(!showPassword)}
-                                    >
+                                    <button type="button" className="absolute right-3 top-1/2 transform -translate-y-1/2" onClick={() => setShowPassword(!showPassword)}>
                                         {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                                     </button>
                                 </div>
                                 {errors.password && <p className="mt-1 text-sm text-red-600">{errors.password}</p>}
                             </div>
 
+                            {/* Confirm Password */}
                             <div>
-                                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
-                                    Confirm Password
-                                </label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
                                 <div className="relative">
                                     <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
                                     <input
-                                        id="confirmPassword"
                                         name="confirmPassword"
                                         type={showConfirmPassword ? "text" : "password"}
-                                        autoComplete="new-password"
-                                        required
                                         placeholder="Confirm your password"
-                                        className={`appearance-none relative block w-full pl-10 pr-10 py-3 border ${errors.confirmPassword ? 'border-red-300' : 'border-gray-300'} placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+                                        className={`appearance-none relative block w-full pl-10 pr-10 py-3 border ${errors.confirmPassword ? "border-red-300" : "border-gray-300"} rounded-lg`}
                                         value={formData.confirmPassword}
                                         onChange={handleChange}
                                     />
-                                    <button
-                                        type="button"
-                                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                                    >
+                                    <button type="button" className="absolute right-3 top-1/2 transform -translate-y-1/2" onClick={() => setShowConfirmPassword(!showConfirmPassword)}>
                                         {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                                     </button>
                                 </div>
                                 {errors.confirmPassword && <p className="mt-1 text-sm text-red-600">{errors.confirmPassword}</p>}
                             </div>
-                        </div>
 
-                        <div className="flex items-center">
-                            <input
-                                id="terms"
-                                name="terms"
-                                type="checkbox"
-                                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                                required
-                            />
-                            <label htmlFor="terms" className="ml-2 block text-sm text-gray-900">
-                                I agree to the <a href="#" className="text-blue-600 hover:text-blue-500">Terms and Conditions</a>
-                            </label>
+                            {/* Company Name */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Company Name</label>
+                                <div className="relative">
+                                    <Building className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+                                    <input
+                                        name="company_name"
+                                        type="text"
+                                        placeholder="Enter your company name"
+                                        className={`appearance-none relative block w-full pl-10 pr-3 py-3 border ${errors.company_name ? "border-red-300" : "border-gray-300"} rounded-lg`}
+                                        value={formData.company_name}
+                                        onChange={handleChange}
+                                    />
+                                </div>
+                                {errors.company_name && <p className="mt-1 text-sm text-red-600">{errors.company_name}</p>}
+                            </div>
+
+                            {/* Description */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                                <textarea
+                                    name="description"
+                                    placeholder="Enter a short description"
+                                    className={`appearance-none relative block w-full px-3 py-3 border ${errors.description ? "border-red-300" : "border-gray-300"} rounded-lg`}
+                                    value={formData.description}
+                                    onChange={handleChange}
+                                />
+                                {errors.description && <p className="mt-1 text-sm text-red-600">{errors.description}</p>}
+                            </div>
                         </div>
 
                         <div>
@@ -232,18 +232,9 @@ export default function Signup() {
                                         Creating account...
                                     </>
                                 ) : (
-                                    'Create Account'
+                                    "Create Account"
                                 )}
                             </button>
-                        </div>
-
-                        <div className="text-center">
-                            <p className="text-sm text-gray-600">
-                                Already have an account?{' '}
-                                <Link href="/login" className="font-medium text-blue-600 hover:text-blue-500">
-                                    Sign in here
-                                </Link>
-                            </p>
                         </div>
                     </form>
                 </div>
