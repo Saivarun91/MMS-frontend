@@ -95,14 +95,9 @@ export default function RequestsPage() {
     };
 
     const handleEdit = (request) => {
-        setEditingRequest(request);
-        setFormData({
-            project_code: request.project_code || "",
-            notes: request.notes || "",
-        });
-        setIsModalOpen(true);
-        setError(null);
-    };
+        router.push(`/requests/${request.request_id}`);
+      };
+      
 
     const handleChatUpdate = (request) => {
         setEditingRequest(request);
@@ -406,12 +401,13 @@ export default function RequestsPage() {
   <div className="flex space-x-2">
     {/* Update */}
     <button
-      onClick={() => handleEdit(request)}
-      className="p-2 text-blue-600 hover:bg-blue-100 rounded"
-      title="Update Request"
-    >
-      <Edit size={16} />
-    </button>
+  onClick={() => handleEdit(request)}
+  className="p-2 text-blue-600 hover:bg-blue-100 rounded"
+  title="Update Request"
+>
+  <Edit size={16} />
+</button>
+
 
     {/* Delete (role check) */}
     {(role === "MDGT" || role === "Admin" || role === "SuperAdmin") && (
