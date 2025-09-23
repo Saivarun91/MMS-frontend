@@ -1007,7 +1007,7 @@ export default function RolesPage() {
                         {selectedTemplate && (
                             <div className="mt-5 pt-5 border-t border-gray-200">
                                 <div className="text-sm font-medium text-gray-700 mb-3">
-                                    Permissions in template <span className="text-indigo-600">"{selectedTemplate}"</span>
+                                    Permissions in template <span className="text-indigo-600">&quot;{selectedTemplate}&quot;</span>
                                 </div>
                                 <div className="grid md:grid-cols-2 gap-3 max-h-64 overflow-y-auto p-1">
                                     {templatePermissionIds.map((id) => {
