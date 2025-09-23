@@ -62,7 +62,7 @@ export default function Login() {
                             <Package className="h-8 w-8 text-white" />
                         </div>
                         <h2 className="mt-2 text-2xl font-bold text-gray-900">
-                            Welcome back
+                            Welcome User
                         </h2>
                         <p className="mt-2 text-sm text-gray-600">
                             Sign in to your Megha Materials Hub account
