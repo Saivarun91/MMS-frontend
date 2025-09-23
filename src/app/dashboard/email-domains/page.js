@@ -21,7 +21,7 @@ export default function EmailDomainsPage() {
   const [formData, setFormData] = useState({
     domain_name: "",
   });
-  const {user,token,role} = useAuth();
+  const {user,token,role,checkPermission} = useAuth();
   // Load data on component mount
   useEffect(() => {
     loadEmailDomains();
@@ -141,23 +141,7 @@ export default function EmailDomainsPage() {
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            {/* <h1 className="font-default text-2xl font-bold text-gray-800 flex items-center">
-              <Mail className="mr-2" size={28} />
-              Email Domains Management
-            </h1> */}
-            {/* <p className="text-gray-600">Configure and manage allowed email domains for user registration</p> */}
-          </div>
-         
-            <button
-              onClick={handleAddNew}
-              className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-            >
-              <Plus size={18} className="mr-2" />
-              Add Domain
-            </button>
-        </div>
+      
 
         {/* Search */}
         <div className="bg-white rounded-lg p-4 shadow-sm mb-6">
@@ -172,6 +156,18 @@ export default function EmailDomainsPage() {
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
+            {
+              checkPermission("email","create") &&(
+                <button
+                onClick={handleAddNew}
+                className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                <Plus size={18} className="mr-2" />
+                Add Domain
+              </button>
+              )
+            }
+           
           </div>
         </div>
 
@@ -242,6 +238,9 @@ export default function EmailDomainsPage() {
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex space-x-3">
+                            {
+                              checkPermission("email","update") && (
+
                             <button
                               onClick={() => handleEdit(domain)}
                               className="text-blue-600 hover:text-blue-800 p-2 rounded-full hover:bg-blue-100 transition duration-200"
@@ -249,6 +248,11 @@ export default function EmailDomainsPage() {
                             >
                               <Edit size={18} />
                             </button>
+                              )
+                            }
+                            {
+                              checkPermission("email","delete") && (
+
                             <button
                               onClick={() => handleDelete(domain.emaildomain_id)}
                               className="text-red-600 hover:text-red-800 p-2 rounded-full hover:bg-red-100 transition duration-200"
@@ -256,6 +260,8 @@ export default function EmailDomainsPage() {
                             >
                               <Trash2 size={18} />
                             </button>
+                              )
+                            }
                           </div>
                         </td>
                       </tr>
@@ -293,7 +299,7 @@ export default function EmailDomainsPage() {
         )}
 
         {/* Info Section */}
-        <div className="bg-blue-50 rounded-lg p-6 mt-6 border border-blue-200">
+        {/* <div className="bg-blue-50 rounded-lg p-6 mt-6 border border-blue-200">
           <div className="flex items-start">
             <div className="bg-blue-100 p-3 rounded-lg mr-4">
               <Info className="h-6 w-6 text-blue-600" />
@@ -309,7 +315,7 @@ export default function EmailDomainsPage() {
               </ul>
             </div>
           </div>
-        </div>
+        </div> */}
       </div>
 
       {/* Domain Modal */}

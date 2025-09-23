@@ -333,13 +333,13 @@ export default function RequestsPage() {
         <div className="min-h-screen bg-gray-50 p-6">
             <div className="max-w-7xl mx-auto">
                 {/* Header */}
-                <div className="flex justify-between items-center mb-6">
+                {/* <div className="flex justify-between items-center mb-6">
                     <div>
-                        {/* <h1 className="font-default text-2xl font-bold text-gray-800 flex items-center">
+                        <h1 className="font-default text-2xl font-bold text-gray-800 flex items-center">
                             <FileText className="mr-2" size={28} />
                             Requests Management
-                        </h1> */}
-                        {/* <p className="text-gray-600">Manage and track material requests with chat functionality</p> */}
+                        </h1>
+                        <p className="text-gray-600">Manage and track material requests with chat functionality</p>
                     </div>
                     {checkPermission("request", "create") && (
                         <button
@@ -350,7 +350,7 @@ export default function RequestsPage() {
                             Add Request
                         </button>
                     )}
-                </div>
+                </div> */}
 
                 {/* Error Message */}
                 {error && (
@@ -368,8 +368,8 @@ export default function RequestsPage() {
                 {/* Search */}
                 <div className="bg-white rounded-lg p-4 shadow-sm mb-6">
                     <div className="flex flex-col md:flex-row gap-4">
-                        <div className="relative flex-1">
-                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+                        <div className="relative flex-1 w-3/4">
+                            <Search className="absolute left-3  top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
                             <input
                                 type="text"
                                 placeholder="Search requests by text, status, notes, or SAP item..."
@@ -378,6 +378,15 @@ export default function RequestsPage() {
                                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
                         </div>
+                        {checkPermission("request", "create") && (
+                        <button
+                            onClick={handleAddNew}
+                            className="flex items-center px-4 w-1/8 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                        >
+                            <Plus size={18} className="mr-2" />
+                            Add Request
+                        </button>
+                    )}
                     </div>
                 </div>
 

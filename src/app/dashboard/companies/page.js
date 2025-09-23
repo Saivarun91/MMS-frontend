@@ -152,27 +152,7 @@ export default function CompaniesPage() {
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            {/* <h1 className="font-default text-3xl font-bold text-gray-900 flex items-center mb-2">
-              <div className="bg-blue-100 p-3 rounded-xl mr-4">
-                <Building className="text-blue-600" size={32} />
-              </div>
-              Companies Management
-            </h1> */}
-            {/* <p className="text-gray-600 text-lg">Manage company information and organizational structure</p> */}
-          </div>
-          {checkPermission("companies", "create") && (
-  <button
-    onClick={handleAddNew}
-    className="flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-  >
-    <Plus size={20} className="mr-2" />
-    Add Company
-  </button>
-)}
-
-        </div>
+       
 
         {/* Search */}
         <div className="bg-white rounded-lg p-4 shadow-sm mb-6">
@@ -187,6 +167,15 @@ export default function CompaniesPage() {
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
               />
             </div>
+            {checkPermission("companies", "create") && (
+  <button
+    onClick={handleAddNew}
+    className="flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+  >
+    <Plus size={20} className="mr-2" />
+    Add Company
+  </button>
+)}
           </div>
         </div>
 
@@ -307,24 +296,7 @@ export default function CompaniesPage() {
           </div>
         )}
 
-        {/* Info Section */}
-        <div className="bg-blue-50 rounded-lg p-6 mt-6 border border-blue-200">
-          <div className="flex items-start">
-            <div className="bg-blue-100 p-3 rounded-lg mr-4">
-              <Info className="h-6 w-6 text-blue-600" />
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold text-blue-800 mb-2">Companies Guide</h3>
-              <ul className="list-disc list-inside text-blue-700 space-y-1">
-                <li>Companies represent different organizations in the system</li>
-                <li>Users are associated with companies for organizational structure</li>
-                <li>Use the search bar to find companies by name</li>
-                <li>Click the &quot;Add Company&quot; button to create new companies</li>
-                <li>Use the edit and delete icons to modify or remove companies</li>
-              </ul>
-            </div>
-          </div>
-        </div>
+        
       </div>
 
       {/* Company Modal */}

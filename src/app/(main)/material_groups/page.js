@@ -202,31 +202,7 @@ export default function MaterialGroupsPage() {
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-          <div>
-            {/* <h1 className="text-2xl font-bold text-gray-800 flex items-center">
-              <Folder className="mr-2" size={28} />
-              Material Groups Management
-            </h1>
-            <p className="text-gray-600 mt-1">Organize materials into groups for better inventory management</p> */}
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            {/* <BackButton 
-              href="/governance" 
-              label="Back to Governance"
-            /> */}
-            {checkPermission("group", "create") && (
-              <button
-                onClick={handleAddNew}
-                className="flex items-center px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all shadow-md hover:shadow-lg"
-              >
-                <Plus size={18} className="mr-2" />
-                Add Group
-              </button>
-            )}
-          </div>
-        </div>
-
+      
         {/* Search */}
         <div className="bg-white rounded-xl p-4 shadow-sm mb-6 border border-gray-100">
           <div className="flex flex-col md:flex-row gap-4">
@@ -244,6 +220,15 @@ export default function MaterialGroupsPage() {
               <span className="font-medium text-blue-600">{filteredGroups.length}</span>
               <span className="ml-1">groups found</span>
             </div>
+            {checkPermission("group", "create") && (
+              <button
+                onClick={handleAddNew}
+                className="flex items-center px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all shadow-md hover:shadow-lg"
+              >
+                <Plus size={18} className="mr-2" />
+                Add Group
+              </button>
+            )}
           </div>
         </div>
 

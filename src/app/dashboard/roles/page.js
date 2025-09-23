@@ -406,30 +406,11 @@ export default function RolesPage() {
             )}
 
             {/* Header */}
-            <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-6">
-                <div>
-                    {/* <h1 className="text-2xl font-bold text-indigo-900 flex items-center gap-2">
-                        <UserCog className="text-indigo-600" /> User Roles
-                    </h1> */}
-                    {/* <p className="text-sm text-gray-600 mt-1">Create roles and manage their permissions</p> */}
-                </div>
-                <div className="flex items-center gap-3">
+           
 
-                    {checkPermission("role", "create") && (
-                        <button
-                            onClick={openAddRole}
-                            className="px-4 py-2 bg-indigo-600 text-white rounded-lg shadow flex items-center gap-2 hover:bg-indigo-700 transition-colors"
-                        >
-                            <Plus size={16} /> Add Role
-                        </button>
-                    )}
-
-                </div>
-            </div>
-
-            {/* Search */}
-            <div className="mb-6">
-                <div className="relative max-w-md">
+            {/* Search */} 
+            <div className="mb-6 flex">
+                <div className="relative w-full max-w-md mr-4 ">
                     <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                     <input
                         className="w-full pl-9 pr-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
@@ -438,6 +419,14 @@ export default function RolesPage() {
                         onChange={(e) => setSearchQuery(e.target.value)}
                     />
                 </div>
+                {checkPermission("role", "create") && (
+                        <button
+                            onClick={openAddRole}
+                            className="px-4 py-2 bg-indigo-600 text-white rounded-lg shadow flex items-center gap-2 hover:bg-indigo-700 transition-colors"
+                        >
+                            <Plus size={16} /> Add Role
+                        </button>
+                    )}
             </div>
 
             {/* Roles table */}

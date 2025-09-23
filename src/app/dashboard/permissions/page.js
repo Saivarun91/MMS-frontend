@@ -7,7 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 
 export default function PermissionsPage() {
     const [permissions, setPermissions] = useState([]);
-    const API_BASE = "http://127.0.0.1:8000/permissions";
+    const API_BASE = `${process.env.NEXT_PUBLIC_API_BASE_URL}/permissions`;
     const [newTempRole, setNewTempRole] = useState("");
     const { token, checkPermission } = useAuth();
     const uniqueRoles = Array.from(
@@ -34,7 +34,7 @@ export default function PermissionsPage() {
     const [selectedRoleFilter, setSelectedRoleFilter] = useState("");
 
     useEffect(() => {
-        fetch("http://127.0.0.1:8000/userroles/roles/", {
+        fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/userroles/roles/`, {
             method: "GET",
             headers: {
                 "Content-Type": "application/json",
@@ -324,7 +324,40 @@ export default function PermissionsPage() {
                     {/* <p className="text-gray-600 mt-1">Manage access controls for different functionalities</p> */}
                 </div>
                 <div className="flex gap-2">
-                {checkPermission("permission", "create") && (
+             
+                </div>
+            </div>
+
+            {/* Stats Cards */}
+         
+
+            {/* Search and Filters */}
+            <div className="flex flex-col w-full sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                <div className="flex items-center gap-4 w-full sm:w-auto">
+                    <div className="relative flex-1 sm:flex-none">
+                        <Search size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                        <input
+                            type="text"
+                            placeholder="Search permissions"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full sm:w-80 pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        />
+                    </div>
+                    <div className="flex">
+                    <select
+                        value={selectedRoleFilter}
+                        onChange={(e) => setSelectedRoleFilter(e.target.value)}
+                        className="px-4 py-2.5 border mr-3 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+                    >
+                        <option value="">All permissions</option>
+                        {uniqueRoles.map((role) => (
+                            <option key={role} value={role}>
+                                {role} only
+                            </option>
+                        ))}
+                    </select>
+                    {checkPermission("permission", "create") && (
                     <button
                         onClick={() => {
                             setFormData({
@@ -341,54 +374,7 @@ export default function PermissionsPage() {
                     </button>
                 )}
 
-                </div>
-            </div>
-
-            {/* Stats Cards */}
-            {/* <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-                <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 transition-all hover:shadow-md">
-                    <div className="text-sm text-gray-500">Total Permissions</div>
-                    <div className="text-2xl font-bold text-indigo-800">{permissions.length}</div>
-                </div>
-                <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 transition-all hover:shadow-md">
-                    <div className="text-sm text-gray-500">Admin Access</div>
-                    <div className="text-2xl font-bold text-indigo-800">{permissions.filter(p => p.roles.includes("Admin")).length}</div>
-                </div>
-                <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 transition-all hover:shadow-md">
-                    <div className="text-sm text-gray-500">Manager Access</div>
-                    <div className="text-2xl font-bold text-indigo-800">{permissions.filter(p => p.roles.includes("MDGT")).length}</div>
-                </div>
-                <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 transition-all hover:shadow-md">
-                    <div className="text-sm text-gray-500">User Access</div>
-                    <div className="text-2xl font-bold text-indigo-800">{permissions.filter(p => p.roles.includes("Employee")).length}</div>
-                </div>
-            </div> */}
-
-            {/* Search and Filters */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-                <div className="flex items-center gap-4 w-full sm:w-auto">
-                    <div className="relative flex-1 sm:flex-none">
-                        <Search size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                        <input
-                            type="text"
-                            placeholder="Search permissions"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full sm:w-80 pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                        />
                     </div>
-                    <select
-                        value={selectedRoleFilter}
-                        onChange={(e) => setSelectedRoleFilter(e.target.value)}
-                        className="px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
-                    >
-                        <option value="">All permissions</option>
-                        {uniqueRoles.map((role) => (
-                            <option key={role} value={role}>
-                                {role} only
-                            </option>
-                        ))}
-                    </select>
 
                 </div>
             </div>

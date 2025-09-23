@@ -37,9 +37,7 @@ export default function MaterialSearchPage() {
   return (
     <div className="min-h-screen bg-gray-50 w-full">
       <div className="w-full bg-white shadow-md overflow-hidden">
-        <div className="bg-blue-800 text-white p-6 w-full">
-          <h1 className="text-2xl font-bold">Material & Service Catalog</h1>
-        </div>
+        
 
         <div className="flex flex-col md:flex-row p-6 w-full">
           {/* Left Section - Search */}

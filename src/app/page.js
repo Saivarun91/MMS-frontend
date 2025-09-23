@@ -84,7 +84,7 @@ export default function Login() {
                                         autoComplete="email"
                                         required
                                         placeholder="Enter your email"
-                                        className={`appearance-none relative block w-full pl-10 pr-3 py-3 border ${errors.email ? 'border-red-300' : 'border-gray-300'} placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+                                        className={`appearance-none relative block w-full font-default font-[14px] pl-10 pr-3 py-3 border ${errors.email ? 'border-red-300' : 'border-gray-300'} placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
                                     />

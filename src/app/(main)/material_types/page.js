@@ -175,30 +175,7 @@ export default function MaterialTypesPage() {
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            {/* <h1 className="font-default text-2xl font-bold text-gray-800 flex items-center">
-              <Tag className="mr-2" size={28} />
-              Material Types Management
-            </h1> */}
-            {/* <p className="text-gray-600">Categorize materials by type for better inventory classification</p> */}
-          </div>
-          <div className="flex items-center gap-3">
-            {/* <BackButton 
-              href="/governance" 
-              label="Back to Governance"
-            /> */}
-            {checkPermission("type", "create") && (
-              <button
-                onClick={handleAddNew}
-                className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-              >
-                <Plus size={18} className="mr-2" />
-                Add Type
-              </button>
-            )}
-          </div>
-        </div>
+     
 
         {/* Search */}
         <div className="bg-white rounded-lg p-4 shadow-sm mb-6">
@@ -213,6 +190,15 @@ export default function MaterialTypesPage() {
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
+            {checkPermission("type", "create") && (
+              <button
+                onClick={handleAddNew}
+                className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                <Plus size={18} className="mr-2" />
+                Add Type
+              </button>
+            )}
           </div>
         </div>
 

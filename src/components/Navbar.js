@@ -10,7 +10,7 @@ const pageTitles = {
     "/search": "Search",
     "/requests": "Requests",
     "/materials": "Materials",
-    "/governance": "Governance",
+    "/governance": "Governance Dashboard",
     "/material_groups": "Material Groups",
     "/material_types": "Material Types",
     "/projects": "Projects",
@@ -36,7 +36,7 @@ const backRoutes = {
     "/supergroups": "/governance",
     "/validation-lists": "/governance",
     "/validation_lists": "/governance",
-    "/material_attributes": "/governance",
+    "/material-attributes": "/governance",
     "/pricing": "/governance",
     "/collections": "/search",
     "/insights": "/search",
@@ -64,32 +64,32 @@ const Navbar = () => {
     }, []);
 
     return (
-        <header className="flex items-center justify-between p-6 bg-white shadow-md sticky top-0 z-50">
+        <header className="flex items-center justify-between px-6 py-4 bg-blue-800 shadow-md sticky top-0 z-50">
             {/* Left section with optional back button + title */}
             <div className="flex items-center gap-4">
                 {backTarget && (
                     <button
                         onClick={() => router.push(backTarget)}
-                        className="flex items-center gap-1 text-gray-700 hover:text-pink-500"
+                        className="flex items-center gap-1 text-gray-700 hover:text-pink-500 cursor-pointer"
                     >
-                        <ArrowLeft size={20} />
-                        <span className="hidden sm:inline">Back</span>
+                        <ArrowLeft size={20} className="text-white" />
+                        <span className="hidden sm:inline text-white">Back</span>
                     </button>
                 )}
             </div>
 
             {/* Page Title */}
             <div className="flex items-center gap-4">
-                <h1 className="text-2xl font-bold text-gray-800">{pageTitle}</h1>
+                <h1 className="text-2xl font-bold text-white">{pageTitle}</h1>
             </div>
 
             {/* Right side */}
             <div className="flex items-center gap-6 text-gray-700">
                 <Link href="/help" className="hover:text-pink-500">
-                    <HelpCircle size={22} />
+                    <HelpCircle size={22} className="text-white" />
                 </Link>
                 <Link href="/notifications" className="hover:text-pink-500 relative">
-                    <Bell size={22} />
+                    <Bell size={22} className="text-white" />
                     <span className="absolute -top-1 -right-1 bg-pink-500 text-white text-xs rounded-full px-1">
                         3
                     </span>
@@ -101,7 +101,7 @@ const Navbar = () => {
                         onClick={() => setDropdownOpen(!dropdownOpen)}
                         className="hover:text-pink-500"
                     >
-                        <User size={22} />
+                        <User size={22} className="text-white" />
                     </button>
 
                     {dropdownOpen && (

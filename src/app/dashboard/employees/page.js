@@ -154,21 +154,7 @@ export default function EmployeesPage() {
 
     return (
         <div className="p-6">
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-2xl font-bold text-gray-800 flex items-center">
-                    {/* <Users className="w-6 h-6 mr-2 text-blue-600" /> */}
-                    {/* Employee Management */}
-                </h1>
-                {checkPermission("employee", "create") && (
-                    <button
-                        onClick={() => setShowModal(true)}
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center transition-colors"
-                    >
-                        <Plus className="w-5 h-5 mr-1" />
-                        Add Employee
-                    </button>
-                )}
-            </div>
+           
 
             {/* Error Message */}
             {error && (
@@ -184,8 +170,8 @@ export default function EmployeesPage() {
             )}
 
             {/* Search */}
-            <div className="bg-white p-4 rounded-xl shadow-sm mb-6 border border-gray-200">
-                <div className="relative">
+            <div className="bg-white p-4 rounded-xl shadow-sm mb-6 w-full border flex border-gray-200">
+                <div className="relative w-5/6 mr-3">
                     <Search className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                     <input
                         type="text"
@@ -195,6 +181,15 @@ export default function EmployeesPage() {
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
                 </div>
+                {checkPermission("employee", "create") && (
+                    <button
+                        onClick={() => setShowModal(true)}
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center transition-colors"
+                    >
+                        <Plus className="w-5 h-5 mr-1" />
+                        Add Employee
+                    </button>
+                )}
             </div>
 
             {/* Employees Table */}

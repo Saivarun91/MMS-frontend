@@ -194,30 +194,7 @@ export default function MaterialAttributesPage() {
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h1 className="font-default text-2xl font-bold text-gray-800 flex items-center">
-              {/* <Settings className="mr-2" size={28} /> */}
-              {/* Material Attributes Management */}
-            </h1>
-            {/* <p className="text-gray-600">Configure attributes for material groups and their validation rules</p> */}
-          </div>
-          <div className="flex items-center gap-3">
-            {/* <BackButton 
-              href="/governance" 
-              label="Back to Governance"
-            /> */}
-            {checkPermission("attribute", "create") && (
-              <button
-                onClick={handleAddNew}
-                className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-              >
-                <Plus size={18} className="mr-2" />
-                Add Attribute
-              </button>
-            )}
-          </div>
-        </div>
+        
 
         {/* Error Message */}
         {error && (
@@ -245,6 +222,15 @@ export default function MaterialAttributesPage() {
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
+            {checkPermission("attribute", "create") && (
+              <button
+                onClick={handleAddNew}
+                className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                <Plus size={18} className="mr-2" />
+                Add Attribute
+              </button>
+            )}
           </div>
         </div>
 

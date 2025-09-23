@@ -168,13 +168,19 @@ export default function ProjectsPage() {
         <div className="min-h-screen bg-gray-50 p-4">
             <div className="max-w-7xl mx-auto">
                 {/* Header */}
-                <div className="flex justify-between items-center mb-6">
-                    <div>
-                        {/* <h1 className="font-default text-2xl font-bold text-gray-800 flex items-center">
-                            <Folder className="mr-2" size={28} />
-                            Project Management
-                        </h1>
-                        <p className="text-gray-600">Create and manage your projects</p> */}
+            
+
+                {/* Search Section */}
+                <div className="bg-white w-full rounded-lg flex p-4 shadow-sm mb-6">
+                    <div className="relative w-7/8 mr-3">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+                        <input
+                            type="text"
+                            placeholder="Search projects by name or code..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
                     </div>
                     {checkPermission("project", "create") && (
                         <button
@@ -185,20 +191,6 @@ export default function ProjectsPage() {
                             Add Project
                         </button>
                     )}
-                </div>
-
-                {/* Search Section */}
-                <div className="bg-white rounded-lg p-4 shadow-sm mb-6">
-                    <div className="relative">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-                        <input
-                            type="text"
-                            placeholder="Search projects by name or code..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                    </div>
                 </div>
 
                 {/* Error Message */}
