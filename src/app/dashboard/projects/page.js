@@ -368,7 +368,7 @@ export default function ProjectsPage() {
                             <h3 className="text-lg font-semibold text-blue-800 mb-2">Project Management Guide</h3>
                             <ul className="list-disc list-inside text-blue-700 space-y-1">
                                 <li>Use the search bar to find projects by name or code</li>
-                                <li>Click the "Add Project" button to create new projects</li>
+                                <li>Click the &quot;Add Project&quot; button to create new projects</li>
                                 <li>Use the edit and delete icons to modify or remove projects</li>
                                 <li>Project codes must be unique for each project</li>
                             </ul>
