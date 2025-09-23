@@ -54,10 +54,7 @@ export default function Login() {
             <div className="max-w-md w-full space-y-8">
                 <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8">
                     {/* <div className="flex justify-center mb-2">
-                        <Link href="/" className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900 mb-6">
-                            <ArrowLeft size={16} className="mr-1" />
-                            Back to home
-                        </Link>
+                        
                     </div> */}
 
                     <div className="text-center">
@@ -165,7 +162,7 @@ export default function Login() {
 
                         <div className="text-center">
                             <p className="text-sm text-gray-600">
-                                Don't have an account?{' '}
+                                Don&apost have an account?{' '}
                                 <Link href="/signup" className="font-medium text-blue-600 hover:text-blue-500">
                                     Sign up here
                                 </Link>
