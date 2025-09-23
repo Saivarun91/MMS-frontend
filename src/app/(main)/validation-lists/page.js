@@ -440,7 +440,7 @@ export default function ValidationListsPage() {
                   placeholder="Active,Inactive,Pending,Discontinued"
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  Enter comma-separated values (e.g., "Active,Inactive,Pending")
+                  Enter comma-separated values (e.g., &quot;Active,Inactive,Pending&quot;)
                 </p>
               </div>
             </div>
