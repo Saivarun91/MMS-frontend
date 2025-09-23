@@ -266,7 +266,7 @@ export default function CompaniesPage() {
                 <li>Companies represent different organizations in the system</li>
                 <li>Users are associated with companies for organizational structure</li>
                 <li>Use the search bar to find companies by name</li>
-                <li>Click the "Add Company" button to create new companies</li>
+                <li>Click the &quot;Add Company&quot; button to create new companies</li>
                 <li>Use the edit and delete icons to modify or remove companies</li>
               </ul>
             </div>
