@@ -2,12 +2,14 @@
 import { useState } from "react";
 import Link from "next/link";
 import axios from "axios";
-import { Eye, EyeOff, Mail, Lock, User, ArrowLeft, Package, Building } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock, User, ArrowLeft, Package, Building, RefreshCw } from "lucide-react";
 
 export default function Signup() {
     const [formData, setFormData] = useState({
         emp_name: "",
         email: "",
+        ph_number: "",
+        designation: "",
         password: "",
         confirmPassword: "",
         company_name: "",
@@ -17,6 +19,10 @@ export default function Signup() {
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [errors, setErrors] = useState({});
+    const [showOtpModal, setShowOtpModal] = useState(false);
+    const [otp, setOtp] = useState("");
+    const [otpLoading, setOtpLoading] = useState(false);
+    const [resendLoading, setResendLoading] = useState(false);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -34,6 +40,8 @@ export default function Signup() {
         } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
             newErrors.email = "Email is invalid";
         }
+        if (!formData.ph_number) newErrors.ph_number = "Phone number is required";
+        if (!formData.designation) newErrors.designation = "Designation is required";
         if (!formData.password) {
             newErrors.password = "Password is required";
         } else if (formData.password.length < 6) {
@@ -57,21 +65,43 @@ export default function Signup() {
 
         setIsLoading(true);
         try {
-            const response = await axios.post("http://localhost:8000/employee/register/", {
+            await axios.post("http://localhost:8000/employee/register/", {
                 emp_name: formData.emp_name,
                 email: formData.email,
+                ph_number: formData.ph_number,
+                designation: formData.designation,
                 password: formData.password,
                 company_name: formData.company_name,
                 description: formData.description,
             });
 
-            console.log("Signup success:", response.data);
+            const event = new CustomEvent("showToast", {
+                detail: { message: "Account created! Please verify your email.", type: "success" },
+            });
+            window.dispatchEvent(event);
 
-            // localStorage.setItem("isLoggedIn", "true");
-            // localStorage.setItem("userName", formData.emp_name.split(" ")[0]);
+            setShowOtpModal(true); // open modal
+        } catch (error) {
+            const event = new CustomEvent("showToast", {
+                detail: { message: error.response?.data?.error || "Signup failed. Try again.", type: "error" },
+            });
+            window.dispatchEvent(event);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleOtpSubmit = async () => {
+        if (!otp) return;
+        setOtpLoading(true);
+        try {
+            await axios.post("http://localhost:8000/employee/verify_email_otp/", {
+                email: formData.email,
+                otp: otp,
+            });
 
             const event = new CustomEvent("showToast", {
-                detail: { message: "Account created successfully! Redirecting...", type: "success" },
+                detail: { message: "Email verified successfully! Redirecting...", type: "success" },
             });
             window.dispatchEvent(event);
 
@@ -79,14 +109,33 @@ export default function Signup() {
                 window.location.href = "/";
             }, 1500);
         } catch (error) {
-            console.error("Signup error:", error.response?.data || error.message);
-
             const event = new CustomEvent("showToast", {
-                detail: { message: error.response?.data?.error || "Signup failed. Try again.", type: "error" },
+                detail: { message: error.response?.data?.error || "Invalid OTP. Try again.", type: "error" },
             });
             window.dispatchEvent(event);
         } finally {
-            setIsLoading(false);
+            setOtpLoading(false);
+        }
+    };
+
+    const handleResendOtp = async () => {
+        setResendLoading(true);
+        try {
+            await axios.post("http://localhost:8000/employee/resend-otp/", {
+                email: formData.email,
+            });
+
+            const event = new CustomEvent("showToast", {
+                detail: { message: "OTP resent to your email.", type: "success" },
+            });
+            window.dispatchEvent(event);
+        } catch (error) {
+            const event = new CustomEvent("showToast", {
+                detail: { message: error.response?.data?.error || "Failed to resend OTP.", type: "error" },
+            });
+            window.dispatchEvent(event);
+        } finally {
+            setResendLoading(false);
         }
     };
 
@@ -105,12 +154,8 @@ export default function Signup() {
                         <div className="bg-gradient-to-r from-[#002147] to-[#7F56D9] p-3 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
                             <Package className="h-8 w-8 text-white" />
                         </div>
-                        <h2 className="mt-2 text-2xl font-bold text-gray-900">
-                            Join Megha Materials Hub
-                        </h2>
-                        <p className="mt-2 text-sm text-gray-600">
-                            Create your account to access our material management system
-                        </p>
+                        <h2 className="mt-2 text-2xl font-bold text-gray-900">Join Megha Materials Hub</h2>
+                        <p className="mt-2 text-sm text-gray-600">Create your account to access our material management system</p>
                     </div>
 
                     <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
@@ -147,6 +192,32 @@ export default function Signup() {
                                     />
                                 </div>
                                 {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email}</p>}
+                            </div>
+
+                            {/* Phone Number */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                                <input
+                                    name="ph_number"
+                                    type="text"
+                                    placeholder="Enter your phone number"
+                                    className={`appearance-none relative block w-full pl-3 pr-3 py-3 border ${errors.ph_number ? "border-red-300" : "border-gray-300"} rounded-lg`}
+                                    value={formData.ph_number}
+                                    onChange={handleChange}
+                                />
+                            </div>
+
+                            {/* Designation */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Designation</label>
+                                <input
+                                    name="designation"
+                                    type="text"
+                                    placeholder="Enter your designation"
+                                    className={`appearance-none relative block w-full pl-3 pr-3 py-3 border ${errors.designation ? "border-red-300" : "border-gray-300"} rounded-lg`}
+                                    value={formData.designation}
+                                    onChange={handleChange}
+                                />
                             </div>
 
                             {/* Password */}
@@ -239,6 +310,50 @@ export default function Signup() {
                     </form>
                 </div>
             </div>
+
+            {/* OTP Modal */}
+            {showOtpModal && (
+                <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+                    <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-sm">
+                        <h3 className="text-lg font-semibold mb-2 text-gray-800">Verify Email</h3>
+                        <p className="text-sm text-gray-600 mb-4">
+                            Enter the OTP sent to <span className="font-medium">{formData.email}</span>
+                        </p>
+                        <input
+                            type="text"
+                            value={otp}
+                            onChange={(e) => setOtp(e.target.value)}
+                            placeholder="Enter OTP"
+                            className="w-full border rounded-lg px-3 py-2 mb-4"
+                        />
+                        <div className="flex justify-between items-center">
+                            <button
+                                onClick={handleResendOtp}
+                                disabled={resendLoading}
+                                className="flex items-center text-sm text-blue-600 hover:underline"
+                            >
+                                <RefreshCw size={14} className="mr-1" />
+                                {resendLoading ? "Resending..." : "Resend OTP"}
+                            </button>
+                            <div className="space-x-2">
+                                <button
+                                    onClick={() => setShowOtpModal(false)}
+                                    className="px-4 py-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-100"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleOtpSubmit}
+                                    disabled={otpLoading}
+                                    className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                                >
+                                    {otpLoading ? "Verifying..." : "Verify"}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

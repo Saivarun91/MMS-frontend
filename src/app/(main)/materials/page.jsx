@@ -26,11 +26,11 @@ export default function MaterialsPage() {
     notes: "",
     search_text: "",
   });
-  const {user,token,role} = useAuth();
+  const {user,token,role,checkPermission} = useAuth();
   // Load materials on component mount
   useEffect(() => {
     loadMaterials();
-  }, []);
+  }, [token]);
 
   const loadMaterials = async () => {
     try {
@@ -116,6 +116,19 @@ export default function MaterialsPage() {
       return;
     }
 
+    // Check permission before proceeding
+    if (editingMaterial) {
+      if (!checkPermission("item", "update")) {
+        setError("You don't have permission to update materials");
+        return;
+      }
+    } else {
+      if (!checkPermission("item", "create")) {
+        setError("You don't have permission to create materials");
+        return;
+      }
+    }
+
     try {
       setSaving(true);
       setError(null);
@@ -138,6 +151,12 @@ export default function MaterialsPage() {
 
   const handleDelete = async (local_item_id) => {
     if (window.confirm("Are you sure you want to delete this material?")) {
+      // Check permission before proceeding
+        if (!checkPermission("item", "delete")) {
+        setError("You don't have permission to delete materials");
+        return;
+      }
+      
       try {
         setError(null);
         //  const token = localStorage.getItem("token");
@@ -155,18 +174,18 @@ export default function MaterialsPage() {
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <div>
-            <h1 className="font-2xl text-2xl font-bold text-gray-800 flex items-center">
+            {/* <h1 className="font-2xl text-2xl font-bold text-gray-800 flex items-center">
               <Package className="mr-2" size={28} />
               Item Management
-            </h1>
+            </h1> */}
             {/* <p className="text-gray-600">Manage your item inventory with CRUD operations</p> */}
           </div>
           <div className="flex items-center gap-3">
-            <BackButton 
+            {/* <BackButton 
               href="/governance" 
               label="Back to Governance"
-            />
-            {role === "MDGT" && (
+            /> */}
+            {checkPermission("item", "create") && (
               <button
                 onClick={handleAddNew}
                 className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
@@ -232,70 +251,84 @@ export default function MaterialsPage() {
         </div>
 
         {/* Materials Table */}
-        <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="animate-spin h-8 w-8 text-blue-600" />
-              <span className="ml-2 text-gray-600">Loading materials...</span>
-            </div>
+        <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+  {loading ? (
+    <div className="flex items-center justify-center py-12">
+      <Loader2 className="animate-spin h-8 w-8 text-blue-600" />
+      <span className="ml-2 text-gray-600">Loading materials...</span>
+    </div>
+  ) : (
+    <div className="overflow-x-auto">
+      <table className="w-full border-collapse">
+        {/* Table Header */}
+        <thead className="bg-gradient-to-r from-purple-600 via-pink-500 to-red-500 text-white">
+          <tr>
+            <th className="px-6 py-3 text-left text-sm font-semibold uppercase">SAP Item ID</th>
+            <th className="px-6 py-3 text-left text-sm font-semibold uppercase">Material Type</th>
+            <th className="px-6 py-3 text-left text-sm font-semibold uppercase">Material Group</th>
+            <th className="px-6 py-3 text-left text-sm font-semibold uppercase">Description</th>
+            <th className="px-6 py-3 text-left text-sm font-semibold uppercase">Notes</th>
+            <th className="px-6 py-3 text-left text-sm font-semibold uppercase">Created</th>
+            <th className="px-6 py-3 text-left text-sm font-semibold uppercase">Actions</th>
+          </tr>
+        </thead>
+
+        {/* Table Body */}
+        <tbody>
+          {filteredMaterials.length > 0 ? (
+            filteredMaterials.map((material, index) => (
+              <tr
+                key={material.local_item_id}
+                className={`transition-all duration-200 ${
+                  index % 2 === 0 ? "bg-gray-50" : "bg-gray-100"
+                } hover:bg-purple-50`}
+              >
+                <td className="px-6 py-4">
+                  <div className="inline-block px-2 py-1 bg-purple-100 text-purple-800 font-mono rounded-lg text-sm shadow-sm">
+                    {material.sap_item_id || "-"}
+                  </div>
+                </td>
+                <td className="px-6 py-4 text-sm text-gray-900">{material.mat_type_code || "-"}</td>
+                <td className="px-6 py-4 text-sm text-gray-900">{material.mgrp_code || "-"}</td>
+                <td className="px-6 py-4 text-sm text-gray-900">{material.item_desc || "-"}</td>
+                <td className="px-6 py-4 text-sm text-gray-900">{material.notes || "-"}</td>
+                <td className="px-6 py-4 text-sm text-gray-900">{material.created || "-"}</td>
+                <td className="px-6 py-4 text-sm text-gray-900">
+                  <div className="flex space-x-2">
+                    {checkPermission("item", "update") && (
+                      <button
+                        onClick={() => handleEdit(material)}
+                        className="text-blue-600 hover:text-blue-800 p-2 rounded-full hover:bg-blue-50 transition duration-200"
+                        title="Edit"
+                      >
+                        <Edit size={16} />
+                      </button>
+                    )}
+                    {checkPermission("item", "delete") && (
+                      <button
+                        onClick={() => handleDelete(material.local_item_id)}
+                        className="text-red-600 hover:text-red-800 p-2 rounded-full hover:bg-red-50 transition duration-200"
+                        title="Delete"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ))
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="font-default px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">SAP Item ID</th>
-                    <th className="font-default px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Material Type</th>
-                    <th className="font-default px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Material Group</th>
-                    <th className="font-default px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
-                    <th className="font-default px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Notes</th>
-                    <th className="font-default px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created</th>
-                    <th className="font-default px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredMaterials.length > 0 ? (
-                    filteredMaterials.map((material) => (
-                      <tr key={material.local_item_id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 text-sm font-medium text-gray-900">{material.sap_item_id || '-'}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900">{material.mat_type_code || '-'}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900">{material.mgrp_code || '-'}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900">{material.item_desc || '-'}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900">{material.notes || '-'}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900">{material.created || '-'}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900">
-                          <div className="flex space-x-2">
-                            {role === "MDGT" && (
-                              <>
-                                <button
-                                  onClick={() => handleEdit(material)}
-                                  className="text-blue-600 hover:text-blue-800"
-                                >
-                                  <Edit size={16} />
-                                </button>
-                                <button
-                                  onClick={() => handleDelete(material.local_item_id)}
-                                  className="text-red-600 hover:text-red-800"
-                                >
-                                  <Trash2 size={16} />
-                                </button>
-                              </>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan="7" className="px-6 py-4 text-center text-sm text-gray-500">
-                        No materials found matching your criteria.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+            <tr>
+              <td colSpan="7" className="px-6 py-8 text-center text-sm text-gray-500">
+                No materials found matching your criteria.
+              </td>
+            </tr>
           )}
-        </div>
+        </tbody>
+      </table>
+    </div>
+  )}
+</div>
 
         {/* Info Section */}
         {/* <div className="bg-blue-50 rounded-lg p-6 mt-6 border border-blue-200">

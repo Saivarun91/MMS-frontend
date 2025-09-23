@@ -19,23 +19,25 @@ export default function EmailDomainsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
   const [formData, setFormData] = useState({
     domain_name: "",
   });
-  const {user,token,role} = useAuth();
+  const {user,token,role,checkPermission} = useAuth();
   // Load data on component mount
   useEffect(() => {
     loadEmailDomains();
-  }, []);
+  }, [token]);
 
   const loadEmailDomains = async () => {
     try {
       setLoading(true);
-      // const token = localStorage.getItem("token");
-      if (!token) {
-        setError("No authentication token found");
-        return;
-      }
+      // // const token = localStorage.getItem("token");
+      // if (!token) {
+      //   setError("No authentication token found");
+      //   return;
+      // }
       
       const data = await fetchEmailDomains(token);
       setDomains(data || []);
@@ -54,6 +56,16 @@ export default function EmailDomainsPage() {
 
     return matchesSearch;
   });
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredDomains.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentDomains = filteredDomains.slice(startIndex, endIndex);
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+  };
 
   // const role = localStorage.getItem("role");
 
@@ -96,6 +108,19 @@ export default function EmailDomainsPage() {
       return;
     }
 
+    // Check permission before proceeding
+    if (editingDomain) {
+      if (!checkPermission("email", "update")) {
+        setError("You don't have permission to update email domains");
+        return;
+      }
+    } else {
+      if (!checkPermission("email", "create")) {
+        setError("You don't have permission to create email domains");
+        return;
+      }
+    }
+
     try {
       setSaving(true);
       // const token = localStorage.getItem("token");
@@ -122,6 +147,12 @@ export default function EmailDomainsPage() {
 
   const handleDelete = async (emaildomain_id) => {
     if (window.confirm("Are you sure you want to delete this email domain? This action cannot be undone.")) {
+      // Check permission before proceeding
+      if (!checkPermission("email", "delete")) {
+        setError("You don't have permission to delete email domains");
+        return;
+      }
+      
       try {
         //  const token = localStorage.getItem("token");
         if (!token) {
@@ -150,7 +181,7 @@ export default function EmailDomainsPage() {
             </h1>
             <p className="text-gray-600">Configure and manage allowed email domains for user registration</p>
           </div>
-          {role === "MDGT" && (
+          {checkPermission("email", "create") && (
             <button
               onClick={handleAddNew}
               className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
@@ -200,60 +231,175 @@ export default function EmailDomainsPage() {
           </div>
         ) : (
           /* Domains Table */
-          <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+          <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
             <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="font-default px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Domain Name</th>
-                    <th className="font-default px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created</th>
-                    <th className="font-default px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created By</th>
-                    <th className="font-default px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Updated</th>
-                    <th className="font-default px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Updated By</th>
-                    <th className="font-default px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+              <table className="w-full border-separate border-spacing-0 shadow-lg rounded-lg overflow-hidden">
+                {/* Table Header */}
+                <thead>
+                  <tr className="bg-gradient-to-r from-purple-600 via-pink-500 to-red-500 text-white uppercase tracking-wide">
+                    <th className="px-6 py-4 text-left text-sm font-semibold cursor-pointer select-none hover:brightness-110 transition-all duration-300">
+                      Domain Name
+                    </th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold">
+                      Created
+                    </th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold">
+                      Created By
+                    </th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold">
+                      Updated
+                    </th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold">
+                      Updated By
+                    </th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredDomains.length > 0 ? (
-                    filteredDomains.map((domain) => (
-                      <tr key={domain.emaildomain_id} className="hover:bg-gray-50">
-                        <td className="font-default px-6 py-4 text-sm font-medium text-gray-900">{domain.domain_name}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900">{domain.created}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900">{domain.createdby || "N/A"}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900">{domain.updated}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900">{domain.updatedby || "N/A"}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900">
-                          <div className="flex space-x-2">
-                            <button
-                              onClick={() => handleEdit(domain)}
-                              className="text-blue-600 hover:text-blue-800"
-                              title="Edit"
-                            >
-                              <Edit size={16} />
-                            </button>
-                            <button
-                              onClick={() => handleDelete(domain.emaildomain_id)}
-                              className="text-red-600 hover:text-red-800"
-                              title="Delete"
-                            >
-                              <Trash2 size={16} />
-                            </button>
+
+                {/* Table Body */}
+                <tbody>
+                  {currentDomains.length > 0 ? (
+                    currentDomains.map((domain, index) => (
+                      <tr
+                        key={domain.emaildomain_id}
+                        className={`transition-all duration-300 hover:bg-purple-50 ${
+                          index % 2 === 0 ? "bg-gray-50" : "bg-gray-100"
+                        }`}
+                      >
+                        <td className="px-6 py-4">
+                          <div className="text-sm font-medium text-gray-900 font-mono bg-purple-50 px-2 py-1 rounded-md inline-block shadow-sm">
+                            {domain.domain_name}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-gray-500">{domain.created}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-gray-900">{domain.createdby || "N/A"}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-gray-500">{domain.updated}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-gray-900">{domain.updatedby || "N/A"}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex space-x-3">
+                            {checkPermission("email", "update") && (
+                              <button
+                                onClick={() => handleEdit(domain)}
+                                className="text-blue-600 hover:text-blue-800 p-2 rounded-full hover:bg-blue-100 transition duration-200"
+                                title="Edit"
+                              >
+                                <Edit size={18} />
+                              </button>
+                            )}
+                            {checkPermission("email", "delete") && (
+                              <button
+                                onClick={() => handleDelete(domain.emaildomain_id)}
+                                className="text-red-600 hover:text-red-800 p-2 rounded-full hover:bg-red-100 transition duration-200"
+                                title="Delete"
+                              >
+                                <Trash2 size={18} />
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
                     ))
                   ) : (
                     <tr>
-                      <td colSpan="6" className="px-6 py-4 text-center text-sm text-gray-500">
-                        {domains.length === 0 
-                          ? "No email domains found. Add a new domain to get started." 
-                          : "No domains found matching your criteria."}
+                      <td colSpan="6" className="px-6 py-12 text-center">
+                        <div className="flex flex-col items-center justify-center text-gray-400">
+                          <Mail size={48} className="mb-4 opacity-50" />
+                          <p className="text-lg font-medium text-gray-500 mb-1">
+                            {domains.length === 0 ? "No email domains found" : "No domains match your criteria"}
+                          </p>
+                          <p className="text-sm">
+                            {domains.length === 0
+                              ? "Get started by adding a new email domain"
+                              : "Try adjusting your search or filter"}
+                          </p>
+                          {domains.length === 0 && checkPermission("email", "create") && (
+                            <button
+                              onClick={handleAddNew}
+                              className="mt-4 inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-md shadow hover:bg-purple-700 transition duration-300"
+                            >
+                              <PlusCircle className="w-5 h-5 mr-2" />
+                              Add New Domain
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   )}
                 </tbody>
               </table>
             </div>
+            
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+                <div className="flex-1 flex justify-between sm:hidden">
+                  <button
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Previous
+                  </button>
+                  <button
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Next
+                  </button>
+                </div>
+                <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm text-gray-700">
+                      Showing <span className="font-medium">{startIndex + 1}</span> to{' '}
+                      <span className="font-medium">{Math.min(endIndex, filteredDomains.length)}</span> of{' '}
+                      <span className="font-medium">{filteredDomains.length}</span> results
+                    </p>
+                  </div>
+                  <div>
+                    <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                      <button
+                        onClick={() => handlePageChange(currentPage - 1)}
+                        disabled={currentPage === 1}
+                        className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Previous
+                      </button>
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                        <button
+                          key={page}
+                          onClick={() => handlePageChange(page)}
+                          className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                            page === currentPage
+                              ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
+                              : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      ))}
+                      <button
+                        onClick={() => handlePageChange(currentPage + 1)}
+                        disabled={currentPage === totalPages}
+                        className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Next
+                      </button>
+                    </nav>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

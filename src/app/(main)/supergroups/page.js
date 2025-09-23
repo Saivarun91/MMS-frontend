@@ -15,12 +15,14 @@ export default function SupergroupsPage() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
   const [formData, setFormData] = useState({
     sgrp_code: "",
     sgrp_name: "",
     dept_name: "",
   });
-  const {user,token,role} = useAuth();
+  const {user,token,role,checkPermission} = useAuth();
   // Mock data for supergroups (since backend endpoint might not be available)
   const mockSupergroups = [
     {
@@ -58,7 +60,7 @@ export default function SupergroupsPage() {
   // Load data on component mount
   useEffect(() => {
     loadSupergroups();
-  }, []);
+  }, [token]);
 
   const loadSupergroups = async () => {
     try {
@@ -84,6 +86,16 @@ export default function SupergroupsPage() {
 
     return matchesSearch;
   });
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredSupergroups.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentSupergroups = filteredSupergroups.slice(startIndex, endIndex);
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+  };
 
   // const role = localStorage.getItem("role");
 
@@ -130,6 +142,19 @@ export default function SupergroupsPage() {
       return;
     }
 
+    // Check permission before proceeding
+    if (editingSupergroup) {
+      if (!checkPermission("super", "update")) {
+        setError("You don't have permission to update supergroups");
+        return;
+      }
+    } else {
+      if (!checkPermission("super", "create")) {
+        setError("You don't have permission to create supergroups");
+        return;
+      }
+    }
+
     try {
       setSaving(true);
       setError(null);
@@ -153,6 +178,12 @@ export default function SupergroupsPage() {
 
   const handleDelete = async (sgrp_code) => {
     if (window.confirm("Are you sure you want to delete this supergroup? This action cannot be undone.")) {
+      // Check permission before proceeding
+      if (!checkPermission("super", "delete")) {
+        setError("You don't have permission to delete supergroups");
+        return;
+      }
+      
       try {
         setError(null);
         // const token = localStorage.getItem("token");
@@ -171,18 +202,18 @@ export default function SupergroupsPage() {
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <div>
-            <h1 className="font-default text-2xl font-bold text-gray-800 flex items-center">
+            {/* <h1 className="font-default text-2xl font-bold text-gray-800 flex items-center">
               <Users className="mr-2" size={28} />
               Supergroups Management
-            </h1>
+            </h1> */}
             {/* <p className="text-gray-600">Define and manage user supergroups for organizational structure</p> */}
           </div>
           <div className="flex items-center gap-3">
-            <BackButton 
+            {/* <BackButton 
               href="/governance" 
               label="Back to Governance"
-            />
-            {role === "MDGT" && (
+            /> */}
+            {checkPermission("super", "create") && (
               <button
                 onClick={handleAddNew}
                 className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
@@ -233,65 +264,125 @@ export default function SupergroupsPage() {
           </div>
         ) : (
           /* Supergroups Table */
-          <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="font-default px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Code</th>
-                    <th className="font-default px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                    <th className="font-default px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Department</th>
-                    <th className="font-default px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created</th>
-                    <th className="font-default px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created By</th>
-                    <th className="font-default px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredSupergroups.length > 0 ? (
-                    filteredSupergroups.map((supergroup) => (
-                      <tr key={supergroup.sgrp_code} className="hover:bg-gray-50">
-                        <td className="font-default px-6 py-4 text-sm font-medium text-gray-900">{supergroup.sgrp_code}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900">{supergroup.sgrp_name}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900">{supergroup.dept_name}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900">{supergroup.created}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900">{supergroup.createdby}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900">
-                          <div className="flex space-x-2">
-                            {role === "MDGT" && (
-                              <>
-                                <button
-                                  onClick={() => handleEdit(supergroup)}
-                                  className="text-blue-600 hover:text-blue-800"
-                                  title="Edit"
-                                >
-                                  <Edit size={16} />
-                                </button>
-                                <button
-                                  onClick={() => handleDelete(supergroup.sgrp_code)}
-                                  className="text-red-600 hover:text-red-800"
-                                  title="Delete"
-                                >
-                                  <Trash2 size={16} />
-                                </button>
-                              </>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan="6" className="px-6 py-4 text-center text-sm text-gray-500">
-                        {supergroups.length === 0 
-                          ? "No supergroups found. Add a new supergroup to get started." 
-                          : "No supergroups found matching your criteria."}
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+          <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+  
+    <div className="overflow-x-auto">
+      <table className="w-full border-collapse">
+        {/* Table Header */}
+        <thead className="bg-gradient-to-r from-purple-600 via-pink-500 to-red-500 text-white">
+          <tr>
+            <th className="px-6 py-3 text-left text-sm font-semibold uppercase">Code</th>
+            <th className="px-6 py-3 text-left text-sm font-semibold uppercase">Name</th>
+            <th className="px-6 py-3 text-left text-sm font-semibold uppercase">Department</th>
+            <th className="px-6 py-3 text-left text-sm font-semibold uppercase">Created</th>
+            <th className="px-6 py-3 text-left text-sm font-semibold uppercase">Created By</th>
+            <th className="px-6 py-3 text-left text-sm font-semibold uppercase">Actions</th>
+          </tr>
+        </thead>
+
+        {/* Table Body */}
+        <tbody>
+          {currentSupergroups.length > 0 ? (
+            currentSupergroups.map((supergroup, index) => (
+              <tr
+                key={supergroup.sgrp_code}
+                className={`transition-all duration-200 ${
+                  index % 2 === 0 ? "bg-gray-50" : "bg-gray-100"
+                } hover:bg-purple-50`}
+              >
+                <td className="px-6 py-4">
+                  <div className="inline-block px-2 py-1 bg-purple-100 text-purple-800 font-mono rounded-lg text-sm shadow-sm">
+                    {supergroup.sgrp_code}
+                  </div>
+                </td>
+                <td className="px-6 py-4 text-sm text-gray-900">{supergroup.sgrp_name}</td>
+                <td className="px-6 py-4 text-sm text-gray-900">{supergroup.dept_name}</td>
+                <td className="px-6 py-4 text-sm text-gray-900">{supergroup.created}</td>
+                <td className="px-6 py-4 text-sm text-gray-900">{supergroup.createdby}</td>
+                <td className="px-6 py-4 text-sm text-gray-900">
+                  <div className="flex space-x-2">
+                    {checkPermission("super", "update") && (
+                      <button
+                        onClick={() => handleEdit(supergroup)}
+                        className="text-blue-600 hover:text-blue-800 p-2 rounded-full hover:bg-blue-50 transition duration-200"
+                        title="Edit"
+                      >
+                        <Edit size={16} />
+                      </button>
+                    )}
+                    {checkPermission("super", "delete") && (
+                      <button
+                        onClick={() => handleDelete(supergroup.sgrp_code)}
+                        className="text-red-600 hover:text-red-800 p-2 rounded-full hover:bg-red-50 transition duration-200"
+                        title="Delete"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ))
+          ) : (
+            <tr>
+              <td colSpan="6" className="px-6 py-8 text-center text-sm text-gray-500">
+                {supergroups.length === 0 
+                  ? "No supergroups found. Add a new supergroup to get started." 
+                  : "No supergroups found matching your criteria."}
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+
+    {/* Pagination */}
+    {totalPages > 1 && (
+      <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+        <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm text-gray-700">
+              Showing <span className="font-medium">{startIndex + 1}</span> to{' '}
+              <span className="font-medium">{Math.min(endIndex, filteredSupergroups.length)}</span> of{' '}
+              <span className="font-medium">{filteredSupergroups.length}</span> results
+            </p>
           </div>
+          <div>
+            <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+              <button
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Previous
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                <button
+                  key={page}
+                  onClick={() => handlePageChange(page)}
+                  className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                    page === currentPage
+                      ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
+                      : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                  }`}
+                >
+                  {page}
+                </button>
+              ))}
+              <button
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Next
+              </button>
+            </nav>
+          </div>
+        </div>
+      </div>
+    )}
+  
+</div>
         )}
 
         {/* Info Section */}

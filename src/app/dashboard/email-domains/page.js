@@ -143,11 +143,11 @@ export default function EmailDomainsPage() {
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <div>
-            <h1 className="font-default text-2xl font-bold text-gray-800 flex items-center">
+            {/* <h1 className="font-default text-2xl font-bold text-gray-800 flex items-center">
               <Mail className="mr-2" size={28} />
               Email Domains Management
-            </h1>
-            <p className="text-gray-600">Configure and manage allowed email domains for user registration</p>
+            </h1> */}
+            {/* <p className="text-gray-600">Configure and manage allowed email domains for user registration</p> */}
           </div>
          
             <button
@@ -198,43 +198,63 @@ export default function EmailDomainsPage() {
           </div>
         ) : (
           /* Domains Table */
-          <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+          <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
             <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="font-default px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Domain Name</th>
-                    <th className="font-default px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created</th>
-                    <th className="font-default px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created By</th>
-                    <th className="font-default px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Updated</th>
-                    <th className="font-default px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Updated By</th>
-                    <th className="font-default px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+              <table className="w-full border-separate border-spacing-0 shadow-lg rounded-lg overflow-hidden">
+                <thead>
+                  <tr className="bg-gradient-to-r from-purple-600 via-pink-500 to-red-500 text-white uppercase tracking-wide">
+                    <th className="px-6 py-4 text-left text-sm font-semibold">Domain Name</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold">Created</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold">Created By</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold">Updated</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold">Updated By</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody>
                   {filteredDomains.length > 0 ? (
-                    filteredDomains.map((domain) => (
-                      <tr key={domain.emaildomain_id} className="hover:bg-gray-50">
-                        <td className="font-default px-6 py-4 text-sm font-medium text-gray-900">{domain.domain_name}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900">{domain.created}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900">{domain.createdby || "N/A"}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900">{domain.updated}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900">{domain.updatedby || "N/A"}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900">
-                          <div className="flex space-x-2">
+                    filteredDomains.map((domain, index) => (
+                      <tr
+                        key={domain.emaildomain_id}
+                        className={`transition-all duration-300 hover:bg-purple-50 ${
+                          index % 2 === 0 ? "bg-gray-50" : "bg-gray-100"
+                        }`}
+                      >
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <Mail className="w-5 h-5 text-blue-600" />
+                            <div className="text-sm font-medium text-gray-900 font-mono bg-purple-50 px-2 py-1 rounded-md inline-block shadow-sm">
+                              {domain.domain_name}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-gray-500">{domain.created}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-gray-900">{domain.createdby || "N/A"}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-gray-500">{domain.updated}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-gray-900">{domain.updatedby || "N/A"}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex space-x-3">
                             <button
                               onClick={() => handleEdit(domain)}
-                              className="text-blue-600 hover:text-blue-800"
+                              className="text-blue-600 hover:text-blue-800 p-2 rounded-full hover:bg-blue-100 transition duration-200"
                               title="Edit"
                             >
-                              <Edit size={16} />
+                              <Edit size={18} />
                             </button>
                             <button
                               onClick={() => handleDelete(domain.emaildomain_id)}
-                              className="text-red-600 hover:text-red-800"
+                              className="text-red-600 hover:text-red-800 p-2 rounded-full hover:bg-red-100 transition duration-200"
                               title="Delete"
                             >
-                              <Trash2 size={16} />
+                              <Trash2 size={18} />
                             </button>
                           </div>
                         </td>
@@ -242,10 +262,27 @@ export default function EmailDomainsPage() {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan="6" className="px-6 py-4 text-center text-sm text-gray-500">
-                        {domains.length === 0 
-                          ? "No email domains found. Add a new domain to get started." 
-                          : "No domains found matching your criteria."}
+                      <td colSpan="6" className="px-6 py-12 text-center">
+                        <div className="flex flex-col items-center justify-center text-gray-400">
+                          <Mail size={48} className="mb-4 opacity-50" />
+                          <p className="text-lg font-medium text-gray-500 mb-1">
+                            {domains.length === 0 ? "No email domains found" : "No domains match your criteria"}
+                          </p>
+                          <p className="text-sm">
+                            {domains.length === 0
+                              ? "Get started by adding a new email domain"
+                              : "Try adjusting your search or filter"}
+                          </p>
+                          {domains.length === 0 && (
+                            <button
+                              onClick={handleAddNew}
+                              className="mt-4 inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-md shadow hover:bg-purple-700 transition duration-300"
+                            >
+                              <Plus size={20} className="mr-2" />
+                              Add New Domain
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   )}

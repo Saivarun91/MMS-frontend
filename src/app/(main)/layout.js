@@ -1,7 +1,8 @@
 // app/(main)/layout.js
-"use client"; // ✅ make this a client component
+"use client";
 
 import Sidebar from "@/components/Sidebar";
+import Navbar from "@/components/Navbar";
 import { SidebarProvider, useSidebar } from "@/context/SidebarContext";
 import "../globals.css";
 
@@ -9,15 +10,24 @@ function MainLayoutContent({ children }) {
     const { isMainSidebarCollapsed } = useSidebar();
 
     return (
-        <div className="flex min-h-screen bg-white">
+        <div className="flex min-h-screen bg-white overflow-hidden">
+            {/* Sidebar (fixed left) */}
             <Sidebar />
-            <main
-                className={`flex-1 overflow-y-auto p-6 md:p-8 transition-all duration-300 ${
-                    isMainSidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'
+
+            {/* Main section with Navbar on top */}
+            <div
+                className={`flex-1 flex flex-col transition-all duration-300 ${
+                    isMainSidebarCollapsed ? "lg:ml-16" : "lg:ml-64"
                 }`}
             >
-                <div className="max-w-7xl mx-auto">{children}</div>
-            </main>
+                {/* Navbar */}
+                <Navbar />
+
+                {/* Page content */}
+                <main className="flex-1 overflow-y-auto px-3">
+                    <div className="max-w-7xl mx-auto">{children}</div>
+                </main>
+            </div>
         </div>
     );
 }

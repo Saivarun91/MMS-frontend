@@ -2,7 +2,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import {
-  Plus, Edit, Trash2, Search, Folder, Info, Loader2
+  Plus, Edit, Trash2, Search, Folder, Info, Loader2, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, CheckCircle, PlusCircle, FolderOpen
 } from "lucide-react";
 import { 
   fetchMaterialGroups, 
@@ -21,7 +21,14 @@ export default function MaterialGroupsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
-  const [formData, setFormData] = useState({
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(50);
+  const [sortField, setSortField] = useState('mgrp_code');
+  const [sortDirection, setSortDirection] = useState('asc');
+  
+  const {user,token,role} = useAuth();
+  
+  const formDataDefaults = {
     mgrp_code: "",
     mgrp_shortname: "",
     mgrp_longname: "",
@@ -29,21 +36,24 @@ export default function MaterialGroupsPage() {
     is_service: false,
     attribgrpid: "",
     notes: "",
-  });
-  const {user,token,role} = useAuth();
+  };
+  
+  const [formData, setFormData] = useState(formDataDefaults);
+
   // Load data on component mount
   useEffect(() => {
-    loadMaterialGroups();
-  }, []);
+    if (token) {
+      loadMaterialGroups();
+    }
+  }, [token]);
 
   const loadMaterialGroups = async () => {
+    if (!token) {
+      // setError("No authentication token found");
+      return;
+  }
     try {
       setLoading(true);
-      // const token = localStorage.getItem("token");
-      if (!token) {
-        setError("No authentication token found");
-        return;
-      }
       
       const data = await fetchMaterialGroups(token);
       setGroups(data || []);
@@ -66,20 +76,45 @@ export default function MaterialGroupsPage() {
     return matchesSearch;
   });
 
-  // const role = localStorage.getItem("role");
+  // Sort groups
+  const sortedGroups = [...filteredGroups].sort((a, b) => {
+    if (a[sortField] < b[sortField]) return sortDirection === 'asc' ? -1 : 1;
+    if (a[sortField] > b[sortField]) return sortDirection === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  // Pagination
+  const totalPages = Math.ceil(sortedGroups.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = Math.min(startIndex + itemsPerPage, sortedGroups.length);
+  const currentGroups = sortedGroups.slice(startIndex, endIndex);
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+  };
+
+  const handleSort = (field) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+    setCurrentPage(1);
+  };
+
+  const SortIcon = ({ field }) => {
+    if (sortField !== field) return <ChevronUp size={16} className="text-blue-200 opacity-50" />;
+    
+    return sortDirection === 'asc' 
+      ? <ChevronUp size={16} className="text-blue-600" /> 
+      : <ChevronDown size={16} className="text-blue-600" />;
+  };
 
   // Modal handlers
   const handleAddNew = () => {
     setEditingGroup(null);
-    setFormData({
-      mgrp_code: "",
-      mgrp_shortname: "",
-      mgrp_longname: "",
-      sgrp_code: "",
-      is_service: false,
-      attribgrpid: "",
-      notes: "",
-    });
+    setFormData(formDataDefaults);
     setIsModalOpen(true);
     setError(null);
   };
@@ -121,7 +156,6 @@ export default function MaterialGroupsPage() {
 
     try {
       setSaving(true);
-      // const token = localStorage.getItem("token");
       if (!token) {
         setError("No authentication token found");
         return;
@@ -146,7 +180,6 @@ export default function MaterialGroupsPage() {
   const handleDelete = async (mgrp_code) => {
     if (window.confirm("Are you sure you want to delete this group? This action cannot be undone.")) {
       try {
-        //  const token = localStorage.getItem("token");
         if (!token) {
           setError("No authentication token found");
           return;
@@ -161,39 +194,41 @@ export default function MaterialGroupsPage() {
     }
   };
 
+  const checkPermission = (resource, action) => {
+    return role === "MDGT";
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
           <div>
-            <h1 className="font-default text-2xl font-bold text-gray-800 flex items-center">
+            {/* <h1 className="text-2xl font-bold text-gray-800 flex items-center">
               <Folder className="mr-2" size={28} />
               Material Groups Management
             </h1>
-            {/* <p className="text-gray-600">Organize materials into groups for better inventory management</p> */}
+            <p className="text-gray-600 mt-1">Organize materials into groups for better inventory management</p> */}
           </div>
-          <div className="flex items-center gap-3">
-            <BackButton 
+          <div className="flex flex-wrap items-center gap-3">
+            {/* <BackButton 
               href="/governance" 
               label="Back to Governance"
-            />
-            {
-              role === "MDGT" && (
-                <button
-                  onClick={handleAddNew}
-                  className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                >
-                  <Plus size={18} className="mr-2" />
-                  Add Group
-                </button>
-              )
-            }
+            /> */}
+            {checkPermission("group", "create") && (
+              <button
+                onClick={handleAddNew}
+                className="flex items-center px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all shadow-md hover:shadow-lg"
+              >
+                <Plus size={18} className="mr-2" />
+                Add Group
+              </button>
+            )}
           </div>
         </div>
 
         {/* Search */}
-        <div className="bg-white rounded-lg p-4 shadow-sm mb-6">
+        <div className="bg-white rounded-xl p-4 shadow-sm mb-6 border border-gray-100">
           <div className="flex flex-col md:flex-row gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
@@ -202,20 +237,24 @@ export default function MaterialGroupsPage() {
                 placeholder="Search groups by name, code or description..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               />
+            </div>
+            <div className="flex items-center text-sm text-gray-500 bg-gray-50 px-4 rounded-xl">
+              <span className="font-medium text-blue-600">{filteredGroups.length}</span>
+              <span className="ml-1">groups found</span>
             </div>
           </div>
         </div>
 
         {/* Error Message */}
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
             <div className="flex">
               <div className="text-red-600 text-sm">{error}</div>
               <button 
                 onClick={() => setError(null)}
-                className="ml-auto text-red-400 hover:text-red-600"
+                className="ml-auto text-red-400 hover:text-red-600 transition-colors"
               >
                 ✕
               </button>
@@ -225,83 +264,239 @@ export default function MaterialGroupsPage() {
 
         {/* Loading State */}
         {loading ? (
-          <div className="bg-white rounded-lg shadow-sm p-8 text-center">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto text-blue-600 mb-4" />
+          <div className="bg-white rounded-xl shadow-sm p-12 text-center">
+            <Loader2 className="h-10 w-10 animate-spin mx-auto text-blue-600 mb-4" />
             <p className="text-gray-600">Loading material groups...</p>
           </div>
         ) : (
           /* Groups Table */
-          <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="font-default px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Code</th>
-                    <th className="font-default px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Short Name</th>
-                    <th className="font-default px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Long Name</th>
-                    <th className="font-default px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Super Group</th>
-                    <th className="font-default px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Service</th>
-                    <th className="font-default px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created</th>
-                    <th className="font-default px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredGroups.length > 0 ? (
-                    filteredGroups.map((group) => (
-                      <tr key={group.mgrp_code} className="hover:bg-gray-50">
-                        <td className="font-default px-6 py-4 text-sm font-medium text-gray-900">{group.mgrp_code}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900">{group.mgrp_shortname}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900">{group.mgrp_longname}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900">{group.supergroup || "N/A"}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900">
-                          <span className={`px-2 py-1 rounded-full text-xs ${
-                            group.is_service 
-                              ? "bg-green-100 text-green-800" 
-                              : "bg-gray-100 text-gray-800"
-                          }`}>
-                            {group.is_service ? "Yes" : "No"}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-900">{group.created}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900">
-                          <div className="flex space-x-2">
-                            <button
-                              onClick={() => handleEdit(group)}
-                              className="text-blue-600 hover:text-blue-800"
-                              title="Edit"
-                            >
-                              <Edit size={16} />
-                            </button>
-                            <button
-                              onClick={() => handleDelete(group.mgrp_code)}
-                              className="text-red-600 hover:text-red-800"
-                              title="Delete"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan="7" className="px-6 py-4 text-center text-sm text-gray-500">
-                        {groups.length === 0 
-                          ? "No material groups found. Add a new group to get started." 
-                          : "No groups found matching your criteria."}
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+          <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
+           <div className="overflow-x-auto">
+  <table className="w-full border-separate border-spacing-0 shadow-lg rounded-lg overflow-hidden">
+    {/* Table Header */}
+    <thead>
+      <tr className="bg-gradient-to-r from-purple-600 via-pink-500 to-red-500 text-white uppercase tracking-wide">
+        <th
+          className="px-6 py-4 text-left text-sm font-semibold cursor-pointer select-none hover:brightness-110 transition-all duration-300"
+          onClick={() => handleSort('mgrp_code')}
+        >
+          <div className="flex items-center gap-1">
+            Code
+            <SortIcon field="mgrp_code" />
+          </div>
+        </th>
+        <th className="px-6 py-4 text-left text-sm font-semibold">Short Name</th>
+        <th className="px-6 py-4 text-left text-sm font-semibold">Long Name</th>
+        <th className="px-6 py-4 text-left text-sm font-semibold">Super Group</th>
+        <th className="px-6 py-4 text-left text-sm font-semibold">Service</th>
+        <th
+          className="px-6 py-4 text-left text-sm font-semibold cursor-pointer select-none hover:brightness-110 transition-all duration-300"
+          onClick={() => handleSort('created')}
+        >
+          <div className="flex items-center gap-1">
+            Created
+            <SortIcon field="created" />
+          </div>
+        </th>
+        <th className="px-6 py-4 text-left text-sm font-semibold">Actions</th>
+      </tr>
+    </thead>
+
+    {/* Table Body */}
+    <tbody>
+      {currentGroups.length > 0 ? (
+        currentGroups.map((group, index) => (
+          <tr
+            key={group.mgrp_code}
+            className={`transition-all duration-300 hover:bg-purple-50 ${
+              index % 2 === 0 ? "bg-gray-50" : "bg-gray-100"
+            }`}
+          >
+            <td className="px-6 py-4">
+              <div className="text-sm font-medium text-gray-900 font-mono bg-purple-50 px-2 py-1 rounded-md inline-block shadow-sm">
+                {group.mgrp_code}
+              </div>
+            </td>
+            <td className="px-6 py-4">
+              <div className="text-sm text-gray-900 font-medium">{group.mgrp_shortname}</div>
+            </td>
+            <td className="px-6 py-4">
+              <div className="text-sm text-gray-900 max-w-xs truncate" title={group.mgrp_longname}>
+                {group.mgrp_longname}
+              </div>
+            </td>
+            <td className="px-6 py-4">
+              <div className="text-sm text-gray-900">
+                {group.supergroup || <span className="text-gray-400 italic">N/A</span>}
+              </div>
+            </td>
+            <td className="px-6 py-4">
+              <span
+                className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
+                  group.is_service
+                    ? "bg-green-100 text-green-800"
+                    : "bg-gray-200 text-gray-800"
+                }`}
+              >
+                {group.is_service ? (
+                  <>
+                    <CheckCircle className="w-4 h-4 mr-1" />
+                    Yes
+                  </>
+                ) : (
+                  "No"
+                )}
+              </span>
+            </td>
+            <td className="px-6 py-4">
+              <div className="text-sm text-gray-500">{group.created}</div>
+            </td>
+            <td className="px-6 py-4">
+              <div className="flex space-x-3">
+                {checkPermission("group", "update") && (
+                  <button
+                    onClick={() => handleEdit(group)}
+                    className="text-blue-600 hover:text-blue-800 p-2 rounded-full hover:bg-blue-100 transition duration-200"
+                    title="Edit"
+                  >
+                    <Edit size={18} />
+                  </button>
+                )}
+                {checkPermission("group", "delete") && (
+                  <button
+                    onClick={() => handleDelete(group.mgrp_code)}
+                    className="text-red-600 hover:text-red-800 p-2 rounded-full hover:bg-red-100 transition duration-200"
+                    title="Delete"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                )}
+              </div>
+            </td>
+          </tr>
+        ))
+      ) : (
+        <tr>
+          <td colSpan="7" className="px-6 py-12 text-center">
+            <div className="flex flex-col items-center justify-center text-gray-400">
+              <FolderOpen size={48} className="mb-4 opacity-50" />
+              <p className="text-lg font-medium text-gray-500 mb-1">
+                {groups.length === 0 ? "No material groups found" : "No groups match your criteria"}
+              </p>
+              <p className="text-sm">
+                {groups.length === 0
+                  ? "Get started by adding a new material group"
+                  : "Try adjusting your search or filter"}
+              </p>
+              {groups.length === 0 && checkPermission("group", "create") && (
+                <button
+                  onClick={handleAddNew}
+                  className="mt-4 inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-md shadow hover:bg-purple-700 transition duration-300"
+                >
+                  <PlusCircle className="w-5 h-5 mr-2" />
+                  Add New Group
+                </button>
+              )}
             </div>
+          </td>
+        </tr>
+      )}
+    </tbody>
+  </table>
+</div>
+
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+                <div className="flex-1 flex justify-between sm:hidden">
+                  <button
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                  >
+                    Previous
+                  </button>
+                  <div className="flex items-center">
+                    <span className="text-sm text-gray-700 mx-2">
+                      Page <span className="font-medium">{currentPage}</span> of <span className="font-medium">{totalPages}</span>
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                  >
+                    Next
+                  </button>
+                </div>
+                <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm text-gray-700">
+                      Showing <span className="font-medium">{startIndex + 1}</span> to{' '}
+                      <span className="font-medium">{endIndex}</span> of{' '}
+                      <span className="font-medium">{sortedGroups.length}</span> results
+                    </p>
+                  </div>
+                  <div>
+                    <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                      <button
+                        onClick={() => handlePageChange(currentPage - 1)}
+                        disabled={currentPage === 1}
+                        className="relative inline-flex items-center px-3 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                      >
+                        <span className="sr-only">Previous</span>
+                        <ChevronLeft className="h-5 w-5" aria-hidden="true" />
+                      </button>
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                        // Show limited page numbers with ellipsis for many pages
+                        if (totalPages <= 7 || Math.abs(page - currentPage) <= 2 || page === 1 || page === totalPages) {
+                          return (
+                            <button
+                              key={page}
+                              onClick={() => handlePageChange(page)}
+                              className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium transition-colors duration-200 ${
+                                page === currentPage
+                                  ? 'z-10 bg-blue-50 border-blue-500 text-blue-600 font-bold'
+                                  : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                              }`}
+                            >
+                              {page}
+                            </button>
+                          );
+                        }
+                        
+                        // Show ellipsis for gaps in pagination
+                        if (page === currentPage - 3 || page === currentPage + 3) {
+                          return (
+                            <span key={page} className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
+                              ...
+                            </span>
+                          );
+                        }
+                        
+                        return null;
+                      })}
+                      <button
+                        onClick={() => handlePageChange(currentPage + 1)}
+                        disabled={currentPage === totalPages}
+                        className="relative inline-flex items-center px-3 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                      >
+                        <span className="sr-only">Next</span>
+                        <ChevronRight className="h-5 w-5" aria-hidden="true" />
+                      </button>
+                    </nav>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
         {/* Info Section */}
-        {/* <div className="bg-blue-50 rounded-lg p-6 mt-6 border border-blue-200">
+        {/* <div className="bg-blue-50 rounded-xl p-6 mt-6 border border-blue-200">
           <div className="flex items-start">
-            <div className="bg-blue-100 p-3 rounded-lg mr-4">
+            <div className="bg-blue-100 p-3 rounded-xl mr-4">
               <Info className="h-6 w-6 text-blue-600" />
             </div>
             <div>
@@ -321,31 +516,31 @@ export default function MaterialGroupsPage() {
       {/* Group Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center p-6 border-b">
               <h2 className="text-xl font-semibold text-gray-800">
                 {editingGroup ? "Edit Material Group" : "Add New Material Group"}
               </h2>
-              <button onClick={handleCloseModal} className="text-gray-400 hover:text-gray-600">
+              <button onClick={handleCloseModal} className="text-gray-400 hover:text-gray-600 transition-colors">
                 ✕
               </button>
             </div>
 
-            <div className="p-6 grid grid-cols-1 gap-4">
+            <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
               {error && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3 md:col-span-2">
                   <div className="text-red-600 text-sm">{error}</div>
                 </div>
               )}
               
-              <div>
+              <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Material Group Code *</label>
                 <input
                   type="text"
                   name="mgrp_code"
                   value={formData.mgrp_code}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-2.5 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   placeholder="GRP-001"
                   disabled={editingGroup}
                 />
@@ -361,7 +556,7 @@ export default function MaterialGroupsPage() {
                   name="mgrp_shortname"
                   value={formData.mgrp_shortname}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-2.5 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   placeholder="Fasteners"
                 />
               </div>
@@ -373,7 +568,7 @@ export default function MaterialGroupsPage() {
                   name="mgrp_longname"
                   value={formData.mgrp_longname}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-2.5 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   placeholder="Fasteners and Hardware Components"
                 />
               </div>
@@ -385,7 +580,7 @@ export default function MaterialGroupsPage() {
                   name="sgrp_code"
                   value={formData.sgrp_code}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-2.5 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   placeholder="SGRP-001"
                 />
               </div>
@@ -397,12 +592,12 @@ export default function MaterialGroupsPage() {
                   name="attribgrpid"
                   value={formData.attribgrpid}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-2.5 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   placeholder="ATTR-001"
                 />
               </div>
               
-              <div className="flex items-center">
+              <div className="flex items-center md:col-span-2">
                 <input
                   type="checkbox"
                   name="is_service"
@@ -415,14 +610,14 @@ export default function MaterialGroupsPage() {
                 </label>
               </div>
               
-              <div>
+              <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
                 <textarea
                   name="notes"
                   value={formData.notes}
                   onChange={handleInputChange}
                   rows={3}
-                  className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-2.5 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   placeholder="Additional notes and description"
                 />
               </div>
@@ -432,14 +627,14 @@ export default function MaterialGroupsPage() {
               <button
                 onClick={handleCloseModal}
                 disabled={saving}
-                className="px-4 py-2 border rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                className="px-4 py-2.5 border rounded-xl text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSaveGroup}
                 disabled={saving || !formData.mgrp_code || !formData.mgrp_shortname || !formData.mgrp_longname}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center"
+                className="px-4 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 flex items-center transition-colors"
               >
                 {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
                 {editingGroup ? "Save Changes" : "Add Group"}

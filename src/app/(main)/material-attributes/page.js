@@ -14,6 +14,8 @@ export default function MaterialAttributesPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
   const [formData, setFormData] = useState({
     mgrp_code: "",
     attrib_printpriority: 0,
@@ -25,11 +27,12 @@ export default function MaterialAttributesPage() {
     attrib_tag_validation: "",
     attrib_maxtaglen: "",
   });
-  const {user,token,role} = useAuth();
+  const {user,token,role,checkPermission} = useAuth();
   // Load data on component mount
   useEffect(() => {
     loadAttributes();
-  }, []);
+  }, [token]);
+  console.log("token",token);
 
   const loadAttributes = async () => {
     try {
@@ -37,9 +40,10 @@ export default function MaterialAttributesPage() {
       setError(null);
       // const token = localStorage.getItem("token");
       const data = await fetchMaterialAttributes(token);
+      console.log("data",data);
       setAttributes(data);
     } catch (err) {
-      setError("Failed to load material attributes: " + (err.response?.data?.error || err.message));
+      // setError("Failed to load material attributes: " + (err.response?.data?.error || err.message));
       console.error("Error loading material attributes:", err);
     } finally {
       setLoading(false);
@@ -56,6 +60,16 @@ export default function MaterialAttributesPage() {
 
     return matchesSearch;
   });
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredAttributes.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentAttributes = filteredAttributes.slice(startIndex, endIndex);
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+  };
 
   // const role = localStorage.getItem("role");
 
@@ -114,6 +128,19 @@ export default function MaterialAttributesPage() {
       return;
     }
 
+    // Check permission before proceeding
+    if (editingAttribute) {
+      if (!checkPermission("attribute", "update")) {
+        setError("You don't have permission to update material attributes");
+        return;
+      }
+    } else {
+      if (!checkPermission("attribute", "create")) {
+        setError("You don't have permission to create material attributes");
+        return;
+      }
+    }
+
     try {
       setSaving(true);
       setError(null);
@@ -145,6 +172,12 @@ export default function MaterialAttributesPage() {
 
   const handleDelete = async (attrib_id) => {
     if (window.confirm("Are you sure you want to delete this material attribute? This action cannot be undone.")) {
+      // Check permission before proceeding
+      if (!checkPermission("attribute", "delete")) {
+        setError("You don't have permission to delete material attributes");
+        return;
+      }
+      
       try {
         setError(null);
         //  const token = localStorage.getItem("token");
@@ -164,17 +197,17 @@ export default function MaterialAttributesPage() {
         <div className="flex justify-between items-center mb-6">
           <div>
             <h1 className="font-default text-2xl font-bold text-gray-800 flex items-center">
-              <Settings className="mr-2" size={28} />
-              Material Attributes Management
+              {/* <Settings className="mr-2" size={28} /> */}
+              {/* Material Attributes Management */}
             </h1>
             {/* <p className="text-gray-600">Configure attributes for material groups and their validation rules</p> */}
           </div>
           <div className="flex items-center gap-3">
-            <BackButton 
+            {/* <BackButton 
               href="/governance" 
               label="Back to Governance"
-            />
-            {role === "MDGT" && (
+            /> */}
+            {checkPermission("attribute", "create") && (
               <button
                 onClick={handleAddNew}
                 className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
@@ -223,49 +256,85 @@ export default function MaterialAttributesPage() {
           </div>
         ) : (
           /* Attributes Table */
-          <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+          <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
             <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="font-default px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Material Group</th>
-                    <th className="font-default px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Attribute Name</th>
-                    <th className="font-default px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Print Name</th>
-                    <th className="font-default px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tag Name</th>
-                    <th className="font-default px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Priority</th>
-                    <th className="font-default px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created</th>
-                    <th className="font-default px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+              <table className="w-full border-separate border-spacing-0 shadow-lg rounded-lg overflow-hidden">
+                {/* Table Header */}
+                <thead>
+                  <tr className="bg-gradient-to-r from-purple-600 via-pink-500 to-red-500 text-white uppercase tracking-wide">
+                    <th className="px-6 py-4 text-left text-sm font-semibold cursor-pointer select-none hover:brightness-110 transition-all duration-300">
+                      Material Group
+                    </th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold">
+                      Attribute Name
+                    </th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold">
+                      Print Name
+                    </th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold">
+                      Tag Name
+                    </th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold">
+                      Priority
+                    </th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold">
+                      Created
+                    </th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredAttributes.length > 0 ? (
-                    filteredAttributes.map((attribute) => (
-                      <tr key={attribute.attrib_id} className="hover:bg-gray-50">
-                        <td className="font-default px-6 py-4 text-sm font-medium text-gray-900">{attribute.mgrp_code}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900">{attribute.attrib_name}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900">{attribute.attrib_printname}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900">{attribute.attrib_tagname}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900">{attribute.attrib_printpriority}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900">{attribute.created ? new Date(attribute.created).toLocaleDateString() : '-'}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900">
-                          <div className="flex space-x-2">
-                            {role === "MDGT" && (
-                              <>
-                                <button
-                                  onClick={() => handleEdit(attribute)}
-                                  className="text-blue-600 hover:text-blue-800"
-                                  title="Edit"
-                                >
-                                  <Edit size={16} />
-                                </button>
-                                <button
-                                  onClick={() => handleDelete(attribute.attrib_id)}
-                                  className="text-red-600 hover:text-red-800"
-                                  title="Delete"
-                                >
-                                  <Trash2 size={16} />
-                                </button>
-                              </>
+
+                {/* Table Body */}
+                <tbody>
+                  {currentAttributes.length > 0 ? (
+                    currentAttributes.map((attribute, index) => (
+                      <tr
+                        key={attribute.attrib_id}
+                        className={`transition-all duration-300 hover:bg-purple-50 ${
+                          index % 2 === 0 ? "bg-gray-50" : "bg-gray-100"
+                        }`}
+                      >
+                        <td className="px-6 py-4">
+                          <div className="text-sm font-medium text-gray-900 font-mono bg-purple-50 px-2 py-1 rounded-md inline-block shadow-sm">
+                            {attribute.mgrp_code}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-gray-900 font-medium">{attribute.attrib_name}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-gray-900">{attribute.attrib_printname}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-gray-900">{attribute.attrib_tagname}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-gray-900">{attribute.attrib_printpriority}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-gray-500">{attribute.created ? new Date(attribute.created).toLocaleDateString() : '-'}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex space-x-3">
+                            {checkPermission("attribute", "update") && (
+                              <button
+                                onClick={() => handleEdit(attribute)}
+                                className="text-blue-600 hover:text-blue-800 p-2 rounded-full hover:bg-blue-100 transition duration-200"
+                                title="Edit"
+                              >
+                                <Edit size={18} />
+                              </button>
+                            )}
+                            {checkPermission("attribute", "delete") && (
+                              <button
+                                onClick={() => handleDelete(attribute.attrib_id)}
+                                className="text-red-600 hover:text-red-800 p-2 rounded-full hover:bg-red-100 transition duration-200"
+                                title="Delete"
+                              >
+                                <Trash2 size={18} />
+                              </button>
                             )}
                           </div>
                         </td>
@@ -273,16 +342,95 @@ export default function MaterialAttributesPage() {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan="7" className="px-6 py-4 text-center text-sm text-gray-500">
-                        {attributes.length === 0 
-                          ? "No material attributes found. Add a new attribute to get started." 
-                          : "No material attributes found matching your criteria."}
+                      <td colSpan="7" className="px-6 py-12 text-center">
+                        <div className="flex flex-col items-center justify-center text-gray-400">
+                          <Settings size={48} className="mb-4 opacity-50" />
+                          <p className="text-lg font-medium text-gray-500 mb-1">
+                            {attributes.length === 0 ? "No material attributes found" : "No attributes match your criteria"}
+                          </p>
+                          <p className="text-sm">
+                            {attributes.length === 0
+                              ? "Get started by adding a new material attribute"
+                              : "Try adjusting your search or filter"}
+                          </p>
+                          {attributes.length === 0 && checkPermission("attribute", "create") && (
+                            <button
+                              onClick={handleAddNew}
+                              className="mt-4 inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-md shadow hover:bg-purple-700 transition duration-300"
+                            >
+                              <PlusCircle className="w-5 h-5 mr-2" />
+                              Add New Attribute
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   )}
                 </tbody>
               </table>
             </div>
+            
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+                <div className="flex-1 flex justify-between sm:hidden">
+                  <button
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Previous
+                  </button>
+                  <button
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Next
+                  </button>
+                </div>
+                <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm text-gray-700">
+                      Showing <span className="font-medium">{startIndex + 1}</span> to{' '}
+                      <span className="font-medium">{Math.min(endIndex, filteredAttributes.length)}</span> of{' '}
+                      <span className="font-medium">{filteredAttributes.length}</span> results
+                    </p>
+                  </div>
+                  <div>
+                    <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                      <button
+                        onClick={() => handlePageChange(currentPage - 1)}
+                        disabled={currentPage === 1}
+                        className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Previous
+                      </button>
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                        <button
+                          key={page}
+                          onClick={() => handlePageChange(page)}
+                          className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                            page === currentPage
+                              ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
+                              : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      ))}
+                      <button
+                        onClick={() => handlePageChange(currentPage + 1)}
+                        disabled={currentPage === totalPages}
+                        className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Next
+                      </button>
+                    </nav>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

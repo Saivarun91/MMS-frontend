@@ -3,16 +3,14 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";            
 import { FiPackage, FiTrendingUp, FiShoppingCart } from "react-icons/fi";
 import { LogOut } from "lucide-react";
+
 export default function MaterialSearchPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedType, setSelectedType] = useState("material");
   const [selectedGroup, setSelectedGroup] = useState("");
   const router = useRouter();   
+
   const handleLogout = () => {
-    // if (typeof window !== "undefined") {
-    //   localStorage.removeItem("isLoggedIn");
-    //   localStorage.removeItem("userName");
-    // }
     window.location.href = "/login";
   };
   
@@ -22,25 +20,14 @@ export default function MaterialSearchPage() {
     { label: "Catalog Growth", value: "28%", change: "+8% from last quarter", icon: FiTrendingUp }
   ];
   
-  const materialGroups = [
-    { code: "MEASTMULT", name: "MEASURING TOOLS / INSTRUMENTS – MULTIMETER ELECTRICAL" },
-    { code: "GASESARGO", name: "GASES – ARGON" },
-    { code: "GASESNITR", name: "GASES – NITROGEN" },
-    { code: "GASESOXYG", name: "GASES – OXYGEN" },
-    { code: "GASESAMMO", name: "GASES – AMMONIA" },
-    { code: "FASTBOLT", name: "FASTENERS – BOLTS" },
-    { code: "FASTNUTS", name: "FASTENERS – NUTS" },
-    { code: "TOOLSHAND", name: "TOOLS – HAND TOOLS" },
-    { code: "TOOLPOWR", name: "TOOLS – POWER TOOLS" },
-    { code: "ELECWIRE", name: "ELECTRICAL – WIRES & CABLES" },
-    { code: "PLUMBPIPE", name: "PLUMBING – PIPES & FITTINGS" },
-    { code: "SAFTPERS", name: "SAFETY – PERSONAL PROTECTIVE EQUIPMENT" },
-  ];
+  // backend results + loading (you already added these — keep them)
+  const [results, setResults] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-  const filteredGroups = materialGroups.filter((group) =>
-    group.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    group.code.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // === REPLACED: remove filteredGroups computed from undefined materialGroups ===
+  // const filteredGroups = materialGroups.filter(...)
+  // Instead use the backend results directly:
+  const displayGroups = results;
 
   const handleGroupSelect = (code) => setSelectedGroup(code);
   const handleSelectClick = () => {
@@ -49,28 +36,11 @@ export default function MaterialSearchPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 w-full">
-      {/* Full-width container */}
-      
       <div className="w-full bg-white shadow-md overflow-hidden">
-        
-        {/* Header */}
         <div className="bg-blue-800 text-white p-6 w-full">
           <h1 className="text-2xl font-bold">Material & Service Catalog</h1>
         </div>
-        
-        
-        
-        {/* Breadcrumb */}
-        {/* <div className="flex p-4 bg-gray-100 text-sm text-gray-600 w-full">
-          <span className="cursor-pointer hover:text-blue-600">Home</span>
-          <span className="mx-2">/</span>
-          <span className="cursor-pointer hover:text-blue-600">Procurement</span>
-          <span className="mx-2">/</span>
-          <span className="font-medium text-blue-600">Material Search</span>
-        </div> */}
-        
-        {/* Main content */}
-      
+
         <div className="flex flex-col md:flex-row p-6 w-full">
           {/* Left Section - Search */}
           <div className="flex flex-col w-full md:w-1/2 pr-0 md:pr-6 mb-6 md:mb-0">
@@ -113,10 +83,50 @@ export default function MaterialSearchPage() {
             </div>
 
             <div className="flex space-x-4">
-              <button className="bg-blue-600 text-white py-2 px-6 rounded-md shadow hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors">
-                Search
+              {/* Search button - calls backend */}
+              <button
+                onClick={async () => {
+                  if (!searchTerm.trim()) return;
+                  setLoading(true);
+                  try {
+                    // Use your API host here. You can change to env var: process.env.NEXT_PUBLIC_API_BASE
+                    const res = await fetch("http://127.0.0.1:8000/api/matgroups/search/", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ query: searchTerm })
+                    });
+                    if (res.ok) {
+                      const data = await res.json();
+                      setResults(data);
+                    } else {
+                      setResults([]);
+                    }
+                  } catch (err) {
+                    console.error("Search failed:", err);
+                    setResults([]);
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
+                disabled={loading || !searchTerm.trim()}
+                className={`py-2 px-6 rounded-md shadow focus:outline-none transition-colors ${
+                  loading || !searchTerm.trim()
+                    ? "bg-blue-300 text-white cursor-not-allowed"
+                    : "bg-blue-600 text-white hover:bg-blue-700"
+                }`}
+              >
+                {loading ? "Searching..." : "Search"}
               </button>
-              <button className="bg-gray-200 text-gray-700 py-2 px-6 rounded-md shadow hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors">
+
+              {/* Clear button */}
+              <button
+                onClick={() => {
+                  setSearchTerm("");
+                  setResults([]);
+                  setSelectedGroup("");
+                }}
+                className="bg-gray-200 text-gray-700 py-2 px-6 rounded-md shadow hover:bg-gray-300"
+              >
                 Clear
               </button>
             </div>
@@ -136,26 +146,45 @@ export default function MaterialSearchPage() {
           <div className="flex flex-col w-full md:w-1/2">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-semibold text-gray-700">Material Groups</h2>
-              <span className="text-sm text-gray-500">{filteredGroups.length} results</span>
+              <span className="text-sm text-gray-500">
+                {loading ? "Searching..." : `${displayGroups.length} results`}
+              </span>
             </div>
             
             <div className="border border-gray-200 rounded-md h-72 overflow-y-auto shadow-inner">
-              {filteredGroups.length > 0 ? (
-                filteredGroups.map((group) => (
-                  <div
-                    key={group.code}
-                    onClick={() => handleGroupSelect(group.code)}
-                    className={`p-3 border-b border-gray-100 hover:bg-blue-50 cursor-pointer transition-colors ${
-                      selectedGroup === group.code ? "bg-blue-100 border-l-4 border-l-blue-600" : ""
-                    }`}
-                  >
-                    <div className="font-semibold text-blue-700">{group.code}</div>
-                    <div className="text-sm text-gray-600">{group.name}</div>
-                  </div>
-                ))
+              {loading ? (
+                <div className="p-4 text-center text-gray-500">Searching...</div>
+              ) : displayGroups.length > 0 ? (
+                displayGroups.map((group) => {
+                  // support both backend keys and legacy keys
+                  const code = group.mgrp_code ?? group.code;
+                  const name = group.notes;
+                 const rank = group.rank ?? "";
+                  return (
+                    <div
+                      key={code}
+                      onClick={() => handleGroupSelect(code)}
+                      className={`p-3 border-b border-gray-100 hover:bg-blue-50 cursor-pointer transition-colors ${
+                        selectedGroup === code ? "bg-blue-100 border-l-4 border-l-blue-600" : ""
+                      }`}
+                    >
+                      <div className="flex justify-between items-center">
+  <div>
+    <div className="font-semibold text-blue-700">{code}</div>
+    <div className="text-sm text-gray-600">{name}</div>
+  </div>
+  <div className="text-xs bg-green-400 text-white p-2 font-mono rounded-md">
+    Rank: {rank}
+  </div>
+</div>
+                    </div>
+                  );
+                })
               ) : (
                 <div className="p-4 text-center text-gray-500">
-                  No material groups found. Try a different search term.
+                  {searchTerm.trim()
+                    ? "No material groups found. Try a different search term."
+                    : "No material groups shown. Enter a search term and click Search."}
                 </div>
               )}
             </div>
@@ -189,7 +218,6 @@ export default function MaterialSearchPage() {
           </div>
         </div>
         
-        {/* Footer */}
         <div className="bg-gray-100 p-4 text-center text-xs text-gray-500 w-full">
           © 2023 Company Name. All rights reserved. | v2.4.1
         </div>

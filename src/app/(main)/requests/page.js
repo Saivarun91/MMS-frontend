@@ -8,7 +8,7 @@ import {
     createRequest,
     updateRequest,
     deleteRequest,
-    assignSapItem
+    assignSapItem,
 } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
@@ -41,7 +41,7 @@ export default function RequestsPage() {
     const [sapData, setSapData] = useState({
         sap_item: "",
     });
-    const { role, token, loading: authLoading } = useAuth(); // include loading
+    const { role, token, loading: authLoading, checkPermission } = useAuth(); // include loading and checkPermission
 
     useEffect(() => {
         if (!authLoading && token) {
@@ -61,6 +61,7 @@ export default function RequestsPage() {
             }
 
             const data = await fetchRequests(token);
+            console.log("data : ", data)
             setRequests(data || []);
         } catch (err) {
             setError("Failed to load requests: " + (err.response?.data?.error || err.message));
@@ -73,16 +74,30 @@ export default function RequestsPage() {
 
     // Filter requests
     const filteredRequests = requests.filter(request => {
+        // Convert user_text into a single string
+        const userText = Array.isArray(request.user_text)
+            ? request.user_text.map(c => 
+                typeof c === "string" ? c : JSON.stringify(c)  // stringify objects
+              ).join(" ")
+            : (request.user_text || "");
+    
+        // Convert reply_text into a single string
+        const replyText = Array.isArray(request.reply_text)
+            ? request.reply_text.map(c => 
+                typeof c === "string" ? c : JSON.stringify(c)
+              ).join(" ")
+            : (request.reply_text || "");
+    
         const matchesSearch =
-            (request.user_text || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (request.reply_text || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+            String(userText).toLowerCase().includes(searchTerm.toLowerCase()) ||
+            String(replyText).toLowerCase().includes(searchTerm.toLowerCase()) ||
             (request.status || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
             (request.notes || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
             (request.sap_item || "").toLowerCase().includes(searchTerm.toLowerCase());
-
+    
         return matchesSearch;
     });
-
+    
     // Modal handlers
     const handleAddNew = () => {
         setEditingRequest(null);
@@ -95,14 +110,10 @@ export default function RequestsPage() {
     };
 
     const handleEdit = (request) => {
-        setEditingRequest(request);
-        setFormData({
-            project_code: request.project_code || "",
-            notes: request.notes || "",
-        });
-        setIsModalOpen(true);
-        setError(null);
-    };
+        console.log("request : ", request.request_id)
+        router.push(`/requests/${request.request_id}?mode=edit`);
+      };
+      
 
     const handleChatUpdate = (request) => {
         setEditingRequest(request);
@@ -177,6 +188,19 @@ export default function RequestsPage() {
         if (!formData.project_code) {
             setError("Please fill in required field: Project ID");
             return;
+        }
+
+        // Check permission before proceeding
+        if (editingRequest) {
+            if (!checkPermission("request", "update")) {
+                setError("You don't have permission to update requests");
+                return;
+            }
+        } else {
+            if (!checkPermission("request", "create")) {
+                setError("You don't have permission to create requests");
+                return;
+            }
         }
 
         try {
@@ -270,6 +294,12 @@ export default function RequestsPage() {
 
     const handleDelete = async (request_id) => {
         if (window.confirm("Are you sure you want to delete this request? This action cannot be undone.")) {
+            // Check permission before proceeding
+            if (!checkPermission("request", "delete")) {
+                setError("You don't have permission to delete requests");
+                return;
+            }
+            
             try {
                 setError(null);
                 if (!token) {
@@ -305,13 +335,13 @@ export default function RequestsPage() {
                 {/* Header */}
                 <div className="flex justify-between items-center mb-6">
                     <div>
-                        <h1 className="font-default text-2xl font-bold text-gray-800 flex items-center">
+                        {/* <h1 className="font-default text-2xl font-bold text-gray-800 flex items-center">
                             <FileText className="mr-2" size={28} />
                             Requests Management
-                        </h1>
+                        </h1> */}
                         {/* <p className="text-gray-600">Manage and track material requests with chat functionality</p> */}
                     </div>
-                    {(role === "Employee" || role === "MDGT" || role === "Admin" || role === "SuperAdmin") && (
+                    {checkPermission("request", "create") && (
                         <button
                             onClick={handleAddNew}
                             className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
@@ -405,16 +435,18 @@ export default function RequestsPage() {
                                           <td className="px-6 py-4 text-sm text-gray-900">
   <div className="flex space-x-2">
     {/* Update */}
-    <button
-      onClick={() => handleEdit(request)}
-      className="p-2 text-blue-600 hover:bg-blue-100 rounded"
-      title="Update Request"
-    >
-      <Edit size={16} />
-    </button>
+    {checkPermission("request", "update") && (
+      <button
+        onClick={() => handleEdit(request)}
+        className="p-2 text-blue-600 hover:bg-blue-100 rounded"
+        title="Update Request"
+      >
+        <Edit size={16} />
+      </button>
+    )}
 
-    {/* Delete (role check) */}
-    {(role === "MDGT" || role === "Admin" || role === "SuperAdmin") && (
+    {/* Delete */}
+    {checkPermission("request", "delete") && (
       <button
         onClick={() => handleDelete(request.request_id)}
         className="p-2 text-red-600 hover:bg-red-100 rounded"

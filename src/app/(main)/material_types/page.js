@@ -10,8 +10,7 @@ import {
   updateMaterialType, 
   deleteMaterialType 
 } from "@/lib/api";
-import {useAuth} from "@/context/AuthContext";
-import BackButton from "@/components/BackButton";    
+import {useAuth} from "@/context/AuthContext"; 
 
 export default function MaterialTypesPage() {
   const [types, setTypes] = useState([]);
@@ -21,24 +20,23 @@ export default function MaterialTypesPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(50);
   const [formData, setFormData] = useState({
     mat_type_code: "",
     mat_type_desc: "",
   });
-  const {user,token,role} = useAuth();
+  const {user,token,role,checkPermission} = useAuth();
   // Load data on component mount
   useEffect(() => {
     loadMaterialTypes();
-  }, []);
+  }, [token]);
 
   const loadMaterialTypes = async () => {
     try {
       setLoading(true);
       // const token = localStorage.getItem("token");
-      if (!token) {
-        setError("No authentication token found");
-        return;
-      }
+   
       
       const data = await fetchMaterialTypes(token);
       setTypes(data || []);
@@ -58,6 +56,16 @@ export default function MaterialTypesPage() {
 
     return matchesSearch;
   });
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredTypes.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentTypes = filteredTypes.slice(startIndex, endIndex);
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+  };
 
   // const role = localStorage.getItem("role");
 
@@ -102,6 +110,19 @@ export default function MaterialTypesPage() {
       return;
     }
 
+    // Check permission before proceeding
+    if (editingType) {
+      if (!checkPermission("type", "update")) {
+        setError("You don't have permission to update material types");
+        return;
+      }
+    } else {
+      if (!checkPermission("type", "create")) {
+        setError("You don't have permission to create material types");
+        return;
+      }
+    }
+
     try {
       setSaving(true);
       // const token = localStorage.getItem("token");
@@ -128,6 +149,12 @@ export default function MaterialTypesPage() {
 
   const handleDelete = async (mat_type_code) => {
     if (window.confirm("Are you sure you want to delete this type? This action cannot be undone.")) {
+      // Check permission before proceeding
+      if (!checkPermission("type", "delete")) {
+        setError("You don't have permission to delete material types");
+        return;
+      }
+      
       try {
         //  const token = localStorage.getItem("token");
         if (!token) {
@@ -150,28 +177,26 @@ export default function MaterialTypesPage() {
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <div>
-            <h1 className="font-default text-2xl font-bold text-gray-800 flex items-center">
+            {/* <h1 className="font-default text-2xl font-bold text-gray-800 flex items-center">
               <Tag className="mr-2" size={28} />
               Material Types Management
-            </h1>
+            </h1> */}
             {/* <p className="text-gray-600">Categorize materials by type for better inventory classification</p> */}
           </div>
           <div className="flex items-center gap-3">
-            <BackButton 
+            {/* <BackButton 
               href="/governance" 
               label="Back to Governance"
-            />
-            {
-              role === "MDGT" && (
-                <button
-                  onClick={handleAddNew}
-                  className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                >
-                  <Plus size={18} className="mr-2" />
-                  Add Type
-                </button>
-              )
-            }
+            /> */}
+            {checkPermission("type", "create") && (
+              <button
+                onClick={handleAddNew}
+                className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                <Plus size={18} className="mr-2" />
+                Add Type
+              </button>
+            )}
           </div>
         </div>
 
@@ -214,61 +239,144 @@ export default function MaterialTypesPage() {
           </div>
         ) : (
           /* Types Table */
-          <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="font-default px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Code</th>
-                    <th className="font-default px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
-                    <th className="font-default px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created</th>
-                    <th className="font-default px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created By</th>
-                    <th className="font-default px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Updated</th>
-                    <th className="font-default px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredTypes.length > 0 ? (
-                    filteredTypes.map((type) => (
-                      <tr key={type.mat_type_code} className="hover:bg-gray-50">
-                        <td className="font-default px-6 py-4 text-sm font-medium text-gray-900">{type.mat_type_code}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900">{type.mat_type_desc}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900">{type.created}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900">{type.createdby || "N/A"}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900">{type.updated}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900">
-                          <div className="flex space-x-2">
-                            <button
-                              onClick={() => handleEdit(type)}
-                              className="text-blue-600 hover:text-blue-800"
-                              title="Edit"
-                            >
-                              <Edit size={16} />
-                            </button>
-                            <button
-                              onClick={() => handleDelete(type.mat_type_code)}
-                              className="text-red-600 hover:text-red-800"
-                              title="Delete"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan="6" className="px-6 py-4 text-center text-sm text-gray-500">
-                        {types.length === 0 
-                          ? "No material types found. Add a new type to get started." 
-                          : "No types found matching your criteria."}
-                      </td>
-                    </tr>
+          <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+  <div className="overflow-x-auto">
+    <table className="w-full border-separate border-spacing-0">
+      <thead className="bg-gradient-to-r from-purple-600 via-pink-500 to-red-500 text-white shadow-md">
+        <tr>
+          <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider cursor-pointer select-none">
+            Code
+          </th>
+          <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider">
+            Description
+          </th>
+          <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider">
+            Created
+          </th>
+          <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider">
+            Created By
+          </th>
+          <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider">
+            Updated
+          </th>
+          <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider">
+            Actions
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {currentTypes.length > 0 ? (
+          currentTypes.map((type, index) => (
+            <tr
+              key={type.mat_type_code}
+              className={`transition-all duration-200 ${
+                index % 2 === 0 ? "bg-gray-50" : "bg-gray-100"
+              } hover:bg-purple-50`}
+            >
+              <td className="px-6 py-4">
+                <div className="inline-block px-2 py-1 bg-purple-100 text-purple-800 font-mono rounded-lg shadow-sm text-sm">
+                  {type.mat_type_code}
+                </div>
+              </td>
+              <td className="px-6 py-4 text-gray-900 text-sm">{type.mat_type_desc}</td>
+              <td className="px-6 py-4 text-gray-900 text-sm">{type.created}</td>
+              <td className="px-6 py-4 text-gray-900 text-sm">{type.createdby || "N/A"}</td>
+              <td className="px-6 py-4 text-gray-900 text-sm">{type.updated}</td>
+              <td className="px-6 py-4">
+                <div className="flex space-x-2">
+                  {checkPermission("type", "update") && (
+                    <button
+                      onClick={() => handleEdit(type)}
+                      className="text-blue-600 hover:text-blue-800 p-2 rounded-full hover:bg-blue-50 transition duration-200"
+                      title="Edit"
+                    >
+                      <Edit size={16} />
+                    </button>
                   )}
-                </tbody>
-              </table>
-            </div>
-          </div>
+                  {checkPermission("type", "delete") && (
+                    <button
+                      onClick={() => handleDelete(type.mat_type_code)}
+                      className="text-red-600 hover:text-red-800 p-2 rounded-full hover:bg-red-50 transition duration-200"
+                      title="Delete"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  )}
+                </div>
+              </td>
+            </tr>
+          ))
+        ) : (
+          <tr>
+            <td colSpan="6" className="px-6 py-8 text-center text-gray-500 text-sm">
+              {types.length === 0 
+                ? "No material types found. Add a new type to get started." 
+                : "No types found matching your criteria."}
+            </td>
+          </tr>
+        )}
+      </tbody>
+    </table>
+  </div>
+
+  {/* Pagination */}
+  {totalPages > 1 && (
+    <div className="px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6 bg-gray-50">
+      <div className="flex-1 flex justify-between sm:hidden">
+        <button
+          onClick={() => handlePageChange(currentPage - 1)}
+          disabled={currentPage === 1}
+          className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Previous
+        </button>
+        <button
+          onClick={() => handlePageChange(currentPage + 1)}
+          disabled={currentPage === totalPages}
+          className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Next
+        </button>
+      </div>
+      <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+        <p className="text-sm text-gray-700">
+          Showing <span className="font-medium">{startIndex + 1}</span> to{' '}
+          <span className="font-medium">{Math.min(endIndex, filteredTypes.length)}</span> of{' '}
+          <span className="font-medium">{filteredTypes.length}</span> results
+        </p>
+        <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+          <button
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+            className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Previous
+          </button>
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+            <button
+              key={page}
+              onClick={() => handlePageChange(page)}
+              className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                page === currentPage
+                  ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
+                  : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+              }`}
+            >
+              {page}
+            </button>
+          ))}
+          <button
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+            className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Next
+          </button>
+        </nav>
+      </div>
+    </div>
+  )}
+</div>
         )}
 
         {/* Info Section */}

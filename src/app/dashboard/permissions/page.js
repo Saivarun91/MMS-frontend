@@ -1,14 +1,15 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
-import { MoreHorizontal, Plus, ChevronDown, ChevronRight, Eye, Edit, Trash2, PenTool, Users, X, Search, Check } from "lucide-react";
+import { MoreHorizontal, Plus, ChevronDown, ChevronRight, Eye, Edit, Trash2, PenTool, Users, X, Search, Check ,Shield,PlusCircle
+    
+} from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-
 
 export default function PermissionsPage() {
     const [permissions, setPermissions] = useState([]);
     const API_BASE = "http://127.0.0.1:8000/permissions";
     const [newTempRole, setNewTempRole] = useState("");
-    const { user,token,role } = useAuth();
+    const { token, checkPermission } = useAuth();
     const uniqueRoles = Array.from(
         new Set(
             permissions.flatMap(p => Object.keys(p.template_roles || {}))
@@ -37,7 +38,7 @@ export default function PermissionsPage() {
             method: "GET",
             headers: {
                 "Content-Type": "application/json",
-                "Authorization": `Bearer ${token}`
+                "Authorization": `Bearer ${localStorage.getItem("token")}`
             }
         })
             .then(res => res.json())
@@ -54,7 +55,7 @@ export default function PermissionsPage() {
             const res = await fetch(`${API_BASE}/`, {
                 headers: {
                     "Content-Type": "application/json",
-                    "Authorization": `Bearer ${token}`
+                    "Authorization": `Bearer ${localStorage.getItem("token")}`
                 }
             });
             const data = await res.json();
@@ -78,7 +79,7 @@ export default function PermissionsPage() {
             method: "GET",
             headers: {
                 "Content-Type": "application/json",
-                "Authorization": `Bearer ${token}` // if JWT auth
+                "Authorization": `Bearer ${localStorage.getItem("token")}` // if JWT auth
             }
         })
             .then(res => res.json())
@@ -150,6 +151,13 @@ export default function PermissionsPage() {
             showToast("Fill all required fields", "error");
             return;
         }
+
+        // Check permission before proceeding
+        if (!checkPermission("permission", "create")) {
+            showToast("You don't have permission to create permissions", "error");
+            return;
+        }
+
         console.log("temp roles : ", formData.template_roles)
         try {
 
@@ -198,13 +206,19 @@ export default function PermissionsPage() {
     };
 
     const handleUpdatePermission = async () => {
+        // Check permission before proceeding
+        if (!checkPermission("permission", "update")) {
+            showToast("You don't have permission to update permissions", "error");
+            return;
+        }
+
         try {
             console.log("update")
             const res = await fetch(`${API_BASE}/${editingPermission.id}/`, {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
-                    "Authorization": `Bearer ${token}`
+                    "Authorization": `Bearer ${localStorage.getItem("token")}`
                 },
                 body: JSON.stringify({
                     permission_name: formData.name,
@@ -228,11 +242,17 @@ export default function PermissionsPage() {
 
 
     const handleDeletePermission = async (permission) => {
+        // Check permission before proceeding
+        if (!checkPermission("permission", "delete")) {
+            showToast("You don't have permission to delete permissions", "error");
+            return;
+        }
+
         try {
             const res = await fetch(`${API_BASE}/${permission.id}/`, {
                 method: "DELETE",
                 headers: {
-                    "Authorization": `Bearer ${token}`
+                    "Authorization": `Bearer ${localStorage.getItem("token")}`
                 }
             });
 
@@ -300,17 +320,27 @@ export default function PermissionsPage() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-8">
                 <div>
-                    <h1 className="text-3xl font-bold text-indigo-900 font-roboto-slab">Permissions Management</h1>
-                    <p className="text-gray-600 mt-1">Manage access controls for different functionalities</p>
+                    {/* <h1 className="text-3xl font-bold text-indigo-900 font-roboto-slab">Permissions Management</h1> */}
+                    {/* <p className="text-gray-600 mt-1">Manage access controls for different functionalities</p> */}
                 </div>
                 <div className="flex gap-2">
+                {checkPermission("permission", "create") && (
                     <button
-                        onClick={() => setIsAddDialogOpen(true)}
+                        onClick={() => {
+                            setFormData({
+                                name: "",
+                                description: "",
+                                template_roles: {}
+                            }); // ✅ reset before opening Add dialog
+                            setIsAddDialogOpen(true);
+                        }}
                         className="px-5 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl shadow-md hover:shadow-lg transition-all flex items-center gap-2 group"
                     >
                         <Plus size={18} className="group-hover:scale-110 transition-transform" />
                         Create Permission
                     </button>
+                )}
+
                 </div>
             </div>
 
@@ -364,92 +394,123 @@ export default function PermissionsPage() {
             </div>
 
             {/* Table */}
-            <div className="bg-white rounded-2xl shadow-sm  border border-gray-100 relative">
-                <table className="w-full text-sm text-left">
-                    <thead className="bg-gradient-to-r from-indigo-50 to-purple-50 text-indigo-900">
-                        <tr>
-                            {/* <th className="px-6 py-4 font-semibold w-12"></th> */}
-                            <th className="px-6 py-4 font-semibold">Permission</th>
-                            <th className="px-6 py-4 font-semibold">Description</th>
-
-                            <th className="px-6 py-4 font-semibold">Roles</th>
-                            <th className="px-6 py-4 font-semibold">Created At</th>
-                            <th className="px-6 py-4 font-semibold text-right">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {filteredPermissions.map((item) => (
-                            <tr
-                                key={item.id}
-                                onClick={() => toggleExpand(item.id)}
-                                className="border-b border-gray-100 hover:bg-indigo-50/50 cursor-pointer transition-colors group"
-                            >
-                                {/* <td className="px-2 py-4">
-                                        <ChevronRight size={16} className="text-gray-400 mx-auto group-hover:text-indigo-600" />
-
-                                    </td> */}
-                                <td className="px-6 py-4 font-medium">
-                                    <div className="text-gray-900 font-poppins text-sm">{item.name}</div>
-                                </td>
-                                <td className="px-6 py-4 font-medium">
-                                    <div className="text-gray-900 font-poppins text-sm">{item.description}</div>
-                                </td>
-
-                                <td className="px-6 py-4">
-                                    <div className="flex flex-wrap gap-1">
-                                        {Object.keys(item.template_roles || {}).map((role, idx) => (
-                                            <span
-                                                key={`${role}-${idx}`}
-                                                className="px-2.5 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800"
-                                            >
-                                                {role}
-                                            </span>
-                                        ))}
-
-                                    </div>
-                                </td>
-                                <td className="px-6 py-4">
-                                    <span className="text-gray-700 font-poppins text-sm">{formatDate(item.createdAt)}</span>
-                                </td>
-                                <td className="px-6 py-4 text-right">
-                                    <div className="flex justify-end gap-2">
-                                        {/* <button
-                                                className="p-2 rounded-lg hover:bg-indigo-100 text-gray-500 hover:text-indigo-700 transition-colors"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleViewPermission(item);
-                                                }}
-                                                title="View Details"
-                                            >
-                                                <Eye size={16} />
-                                            </button> */}
-                                        <button
-                                            className="p-2 rounded-lg hover:bg-indigo-100 text-gray-500 hover:text-indigo-700 transition-colors"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleEditPermission(item);
-                                            }}
-                                            title="Edit Permission"
-                                        >
-                                            <Edit size={16} />
-                                        </button>
-                                        <button
-                                            className="p-2 rounded-lg hover:bg-red-100 text-gray-500 hover:text-red-700 transition-colors"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleDeletePermission(item);
-                                            }}
-                                            title="Delete Permission"
-                                        >
-                                            <Trash2 size={16} />
-                                        </button>
-                                    </div>
-                                </td>
+            <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
+                <div className="overflow-x-auto">
+                    <table className="w-full border-separate border-spacing-0 shadow-lg rounded-lg overflow-hidden">
+                        {/* Table Header */}
+                        <thead>
+                            <tr className="bg-gradient-to-r from-purple-600 via-pink-500 to-red-500 text-white uppercase tracking-wide">
+                                <th className="px-6 py-4 text-left text-sm font-semibold cursor-pointer select-none hover:brightness-110 transition-all duration-300">
+                                    Permission
+                                </th>
+                                <th className="px-6 py-4 text-left text-sm font-semibold">
+                                    Description
+                                </th>
+                                <th className="px-6 py-4 text-left text-sm font-semibold">
+                                    Roles
+                                </th>
+                                <th className="px-6 py-4 text-left text-sm font-semibold">
+                                    Created At
+                                </th>
+                                <th className="px-6 py-4 text-left text-sm font-semibold">
+                                    Actions
+                                </th>
                             </tr>
+                        </thead>
 
-                        ))}
-                    </tbody>
-                </table>
+                        {/* Table Body */}
+                        <tbody>
+                            {filteredPermissions.length > 0 ? (
+                                filteredPermissions.map((item, index) => (
+                                    <tr
+                                        key={item.id}
+                                        onClick={() => toggleExpand(item.id)}
+                                        className={`transition-all duration-300 hover:bg-purple-50 cursor-pointer group ${
+                                            index % 2 === 0 ? "bg-gray-50" : "bg-gray-100"
+                                        }`}
+                                    >
+                                        <td className="px-6 py-4">
+                                            <div className="text-sm font-medium text-gray-900 font-mono bg-purple-50 px-2 py-1 rounded-md inline-block shadow-sm">
+                                                {item.name}
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="text-sm text-gray-900 max-w-xs truncate" title={item.description}>
+                                                {item.description}
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex flex-wrap gap-1">
+                                                {Object.keys(item.template_roles || {}).map((role, idx) => (
+                                                    <span
+                                                        key={`${role}-${idx}`}
+                                                        className="px-2.5 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800"
+                                                    >
+                                                        {role}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="text-sm text-gray-500">{formatDate(item.createdAt)}</div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex space-x-3">
+                                                {checkPermission("permission", "update") && (
+                                                    <button
+                                                        className="text-blue-600 hover:text-blue-800 p-2 rounded-full hover:bg-blue-100 transition duration-200"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleEditPermission(item);
+                                                        }}
+                                                        title="Edit Permission"
+                                                    >
+                                                        <Edit size={18} />
+                                                    </button>
+                                                )}
+                                                {checkPermission("permission", "delete") && (
+                                                    <button
+                                                        className="text-red-600 hover:text-red-800 p-2 rounded-full hover:bg-red-100 transition duration-200"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleDeletePermission(item);
+                                                        }}
+                                                        title="Delete Permission"
+                                                    >
+                                                        <Trash2 size={18} />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))
+                            ) : (
+                                <tr>
+                                    <td colSpan="5" className="px-6 py-12 text-center">
+                                        <div className="flex flex-col items-center justify-center text-gray-400">
+                                            <Shield size={48} className="mb-4 opacity-50" />
+                                            <p className="text-lg font-medium text-gray-500 mb-1">
+                                                No permissions found
+                                            </p>
+                                            <p className="text-sm">
+                                                Get started by adding a new permission
+                                            </p>
+                                            {checkPermission("permission", "create") && (
+                                                <button
+                                                    onClick={() => setIsAddDialogOpen(true)}
+                                                    className="mt-4 inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-md shadow hover:bg-purple-700 transition duration-300"
+                                                >
+                                                    <PlusCircle className="w-5 h-5 mr-2" />
+                                                    Add New Permission
+                                                </button>
+                                            )}
+                                        </div>
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
             {/* Add Permission Dialog */}
@@ -613,6 +674,34 @@ export default function PermissionsPage() {
                                         Add
                                     </button>
                                 </div>
+                                {/* 👇 New: Select from existing uniqueRoles */}
+                                {uniqueRoles && uniqueRoles.length > 0 && (
+                                    <div className="mt-3 flex gap-2">
+                                        <select
+                                            onChange={(e) => {
+                                                const selectedRole = e.target.value;
+                                                if (selectedRole && !formData.template_roles[selectedRole]) {
+                                                    setFormData(prev => ({
+                                                        ...prev,
+                                                        template_roles: {
+                                                            ...prev.template_roles,
+                                                            [selectedRole]: { enabled: true }
+                                                        }
+                                                    }));
+                                                }
+                                                e.target.value = ""; // reset
+                                            }}
+                                            className="flex-1 px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+                                        >
+                                            <option value="">Select existing role</option>
+                                            {uniqueRoles.map((role) => (
+                                                <option key={role} value={role}>
+                                                    {role}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
                             </div>
 
 

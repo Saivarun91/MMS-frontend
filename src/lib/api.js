@@ -287,3 +287,18 @@ export const deleteMaterialAttribute = (token, attrib_id) => {
     const axiosInstance = createAxiosInstance(token);
     return axiosInstance.delete(`matgattribute/delete/${attrib_id}/`).then(res => res.data);
 };
+
+// Chat API
+export const fetchChatMessages = (token, request_id) => {
+    const axiosInstance = createAxiosInstance(token);
+    return axiosInstance
+        .get(`requests/chat/${request_id}/`)
+        .then(res => res.data);
+};
+
+export const addChatMessage = (token, request_id, message) => {
+    const axiosInstance = createAxiosInstance(token);
+    return axiosInstance
+        .post(`requests/chat/add/${request_id}/`, { message })
+        .then(res => res.data);
+};

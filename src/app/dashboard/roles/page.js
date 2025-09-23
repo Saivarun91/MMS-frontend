@@ -34,11 +34,15 @@ import {
 import { useAuth } from "@/context/AuthContext";
 
 export default function RolesPage() {
-    const { token, loading } = useAuth();
+    const { token, loading, role: currentUserRole, fetchPermissionsForRole, checkPermission } = useAuth();
+
+
 
     // ---- Server state ----
     const [roles, setRoles] = useState([]);
     const [availablePermissions, setAvailablePermissions] = useState([]);
+    const [roleUpdates, setRoleUpdates] = useState({});
+
 
     // ---- UI state ----
     const [expandedRoleId, setExpandedRoleId] = useState(null);
@@ -103,6 +107,7 @@ export default function RolesPage() {
                     };
                 });
                 setAvailablePermissions(normalized);
+                
             } catch (err) {
                 console.error(err);
                 showToast("Failed to load permissions", "error");
@@ -128,6 +133,7 @@ export default function RolesPage() {
             }, {}),
         }));
         setRoles(mapped);
+        console.log(mapped);
     };
 
     useEffect(() => {
@@ -173,36 +179,51 @@ export default function RolesPage() {
         setUnassignedPermissions(unassigned);
         setShowRoleModal(true);
     };
-
     const saveRole = async (e) => {
         e.preventDefault();
         if (!token) return showToast("Not authenticated", "error");
 
         try {
+            let roleName = roleForm.role_name?.trim();
+
             if (roleModalMode === "add") {
                 const res = await createRole(token, {
-                    role_name: roleForm.role_name?.trim(),
+                    role_name: roleName,
                     role_priority: roleForm.role_priority ? Number(roleForm.role_priority) : null,
                 });
                 showToast(res?.message || "Role created");
-
-                if (stagedAssignments.length) {
-                    await assignRolePermissions(token, {
-                        role_name: roleForm.role_name?.trim(),
-                        assignments: stagedAssignments,
-                    });
-                }
             } else if (roleModalMode === "edit" && editingRole) {
                 const res = await updateRole(token, editingRole.id, {
-                    role_name: roleForm.role_name?.trim(),
+                    role_name: roleName,
                     role_priority: roleForm.role_priority ? Number(roleForm.role_priority) : null,
                 });
                 showToast(res?.message || "Role updated");
+            }
 
-                if (stagedAssignments.length) {
+            // --- Handle staged permission changes ---
+            if (stagedAssignments.length) {
+                // Split stagedAssignments into "new" and "updates"
+                const existingIds = Object.keys(editingRole?.permissions || {}).map(Number);
+
+                const newAssignments = stagedAssignments.filter(
+                    (a) => !existingIds.includes(a.permission_id)
+                );
+
+                const updates = stagedAssignments.filter(
+                    (a) => existingIds.includes(a.permission_id)
+                );
+
+                if (newAssignments.length) {
                     await assignRolePermissions(token, {
-                        role_name: roleForm.role_name?.trim(),
-                        assignments: stagedAssignments,
+                        role_name: roleName,
+                        assignments: newAssignments,
+                    });
+                }
+
+                if (updates.length) {
+                    await updateRolePermissions(token, {
+                        role_name: roleName,
+                        updates,
                     });
                 }
             }
@@ -215,6 +236,7 @@ export default function RolesPage() {
             showToast(msg, "error");
         }
     };
+
 
     const deleteRoleAction = async (roleId) => {
         try {
@@ -234,52 +256,51 @@ export default function RolesPage() {
         setRoleForm({ role_name: "", role_priority: "" });
         setStagedAssignments([]);
     };
-
-    // ------- Permission toggles -------
-    const toggleAssigned = async (role, permission_id, field) => {
+    const toggleAssigned = (role, permission_id, field) => {
         const current = role.permissions?.[permission_id]?.[field] || false;
-        setRoles((prev) =>
-            prev.map((r) => {
-                if (r.id !== role.id) return r;
-                return {
-                    ...r,
-                    permissions: {
-                        ...r.permissions,
-                        [permission_id]: {
-                            ...r.permissions[permission_id],
-                            [field]: !current,
-                        },
-                    },
-                };
-            })
-        );
+        const newValue = !current;
 
-        try {
-            await updateRolePermissions(token, {
-                role_name: role.role_name,
-                updates: [{ permission_id, [field]: !current }],
-            });
-            showToast("Permission updated");
-        } catch (err) {
-            console.error(err);
-            showToast("Failed to update permission", "error");
-            setRoles((prev) =>
-                prev.map((r) => {
-                    if (r.id !== role.id) return r;
-                    return {
+        // Build the full access object
+        const fullAccess = {
+            can_create: role.permissions?.[permission_id]?.can_create || false,
+            can_update: role.permissions?.[permission_id]?.can_update || false,
+            can_delete: role.permissions?.[permission_id]?.can_delete || false,
+            can_export: role.permissions?.[permission_id]?.can_export || false,
+            [field]: newValue,
+        };
+
+        // Update UI
+        setRoles((prev) =>
+            prev.map((r) =>
+                r.id === role.id
+                    ? {
                         ...r,
                         permissions: {
                             ...r.permissions,
-                            [permission_id]: {
-                                ...r.permissions[permission_id],
-                                [field]: current,
-                            },
+                            [permission_id]: { ...r.permissions[permission_id], ...fullAccess },
                         },
-                    };
-                })
-            );
-        }
+                    }
+                    : r
+            )
+        );
+
+        // Stage for this role
+        setRoleUpdates((prev) => {
+            const updates = prev[role.id] || [];
+            const existingIndex = updates.findIndex((u) => u.permission_id === permission_id);
+            let newUpdates;
+            if (existingIndex >= 0) {
+                newUpdates = [...updates];
+                newUpdates[existingIndex] = { permission_id, ...fullAccess };
+            } else {
+                newUpdates = [...updates, { permission_id, ...fullAccess }];
+            }
+            return { ...prev, [role.id]: newUpdates };
+        });
     };
+
+
+
 
     // ------- Template copy flow -------
     const allTemplateNames = useMemo(() => {
@@ -366,6 +387,8 @@ export default function RolesPage() {
             )
         );
     };
+    const isEditPermissions = checkPermission("role", "update");
+
 
     return (
         <div className="p-6 text-gray-800 bg-gray-50 min-h-screen">
@@ -385,19 +408,22 @@ export default function RolesPage() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-6">
                 <div>
-                    <h1 className="text-2xl font-bold text-indigo-900 flex items-center gap-2">
+                    {/* <h1 className="text-2xl font-bold text-indigo-900 flex items-center gap-2">
                         <UserCog className="text-indigo-600" /> User Roles
-                    </h1>
-                    <p className="text-sm text-gray-600 mt-1">Create roles and manage their permissions</p>
+                    </h1> */}
+                    {/* <p className="text-sm text-gray-600 mt-1">Create roles and manage their permissions</p> */}
                 </div>
                 <div className="flex items-center gap-3">
 
-                    <button
-                        onClick={openAddRole}
-                        className="px-4 py-2 bg-indigo-600 text-white rounded-lg shadow flex items-center gap-2 hover:bg-indigo-700 transition-colors"
-                    >
-                        <Plus size={16} /> Add Role
-                    </button>
+                    {checkPermission("role", "create") && (
+                        <button
+                            onClick={openAddRole}
+                            className="px-4 py-2 bg-indigo-600 text-white rounded-lg shadow flex items-center gap-2 hover:bg-indigo-700 transition-colors"
+                        >
+                            <Plus size={16} /> Add Role
+                        </button>
+                    )}
+
                 </div>
             </div>
 
@@ -415,92 +441,106 @@ export default function RolesPage() {
             </div>
 
             {/* Roles table */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                <table className="w-full text-sm">
-                    <thead className="bg-indigo-50 text-indigo-900">
-                        <tr>
-                            <th className="w-10 px-4 py-3"></th>
-                            <th className="px-4 py-3 text-left">Role Name</th>
-                            <th className="px-4 py-3 text-left">Priority</th>
-                            <th className="px-4 py-3 text-left">Permissions</th>
-                            <th className="px-4 py-3 text-right">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {filteredRoles.map((role) => {
-                            const permCount = Object.keys(role.permissions || {}).length;
-                            return (
-                                <React.Fragment key={role.id}>
-                                    <tr
-                                        className="border-b border-gray-100 hover:bg-indigo-50/40 transition-colors group"
-                                        onClick={() => setExpandedRoleId(expandedRoleId === role.id ? null : role.id)}
-                                    >
-                                        <td className="px-4 py-3">
-                                            {expandedRoleId === role.id ? (
-                                                <ChevronDown size={16} className="text-indigo-600" />
-                                            ) : (
-                                                <ChevronRight size={16} className="text-gray-400 group-hover:text-indigo-500" />
-                                            )}
-                                        </td>
-                                        <td className="px-4 py-3 font-medium flex items-center gap-2">
-                                            <span className="p-1.5 bg-indigo-100 rounded-full"><Shield size={16} className="text-indigo-600" /></span>
-                                            {role.role_name}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            {role.role_priority === "" || role.role_priority == null
-                                                ? <span className="text-gray-400">—</span>
-                                                : <span className="px-2 py-1 bg-gray-100 rounded-full text-xs">{role.role_priority}</span>
-                                            }
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <div className="flex items-center gap-1">
-                                                <Key size={14} className="text-gray-400" />
-                                                <span>{permCount} permission{permCount !== 1 ? 's' : ''}</span>
-                                            </div>
-                                        </td>
-                                        <td className="px-4 py-3 text-right">
-                                            <div className="flex justify-end gap-1">
-                                                <button
-                                                    className="p-2 rounded hover:bg-indigo-100 text-gray-600 hover:text-indigo-700"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        openEditRole(role);
-                                                    }}
-                                                    title="Edit role"
-                                                >
-                                                    <Edit size={16} />
-                                                </button>
-                                                <button
-                                                    className="p-2 rounded hover:bg-indigo-100 text-gray-600 hover:text-indigo-700"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        openTemplateModal(role);
-                                                    }}
-                                                    title="Copy template"
-                                                >
-                                                    <Copy size={16} />
-                                                </button>
-                                                <button
-                                                    className="p-2 rounded hover:bg-red-100 text-gray-600 hover:text-red-700"
-                                                    onClick={async (e) => {
-                                                        e.stopPropagation();
-                                                        if (confirm(`Are you sure you want to delete "${role.role_name}"?`)) {
-                                                            await deleteRoleAction(role.id);
-                                                        }
-                                                    }}
-                                                    title="Delete role"
-                                                >
-                                                    <Trash2 size={16} />
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
+            <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
+                <div className="overflow-x-auto">
+                    <table className="w-full border-separate border-spacing-0 shadow-lg rounded-lg overflow-hidden">
+                        <thead>
+                            <tr className="bg-gradient-to-r from-purple-600 via-pink-500 to-red-500 text-white uppercase tracking-wide">
+                                <th className="w-10 px-6 py-4 text-left text-sm font-semibold"></th>
+                                <th className="px-6 py-4 text-left text-sm font-semibold">Role Name</th>
+                                <th className="px-6 py-4 text-left text-sm font-semibold">Priority</th>
+                                <th className="px-6 py-4 text-left text-sm font-semibold">Permissions</th>
+                                <th className="px-6 py-4 text-left text-sm font-semibold">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {filteredRoles.map((role, index) => {
+                                const permCount = Object.keys(role.permissions || {}).length;
+                                return (
+                                    <React.Fragment key={role.id}>
+                                        <tr
+                                            className={`transition-all duration-300 hover:bg-purple-50 cursor-pointer group ${
+                                                index % 2 === 0 ? "bg-gray-50" : "bg-gray-100"
+                                            }`}
+                                            onClick={() => setExpandedRoleId(expandedRoleId === role.id ? null : role.id)}
+                                        >
+                                            <td className="px-6 py-4">
+                                                {expandedRoleId === role.id ? (
+                                                    <ChevronDown size={16} className="text-purple-600" />
+                                                ) : (
+                                                    <ChevronRight size={16} className="text-gray-400 group-hover:text-purple-500" />
+                                                )}
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center gap-3">
+                                                    <Shield className="w-5 h-5 text-blue-600" />
+                                                    <div className="text-sm font-medium text-gray-900 font-mono bg-purple-50 px-2 py-1 rounded-md inline-block shadow-sm">
+                                                        {role.role_name}
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                {role.role_priority === "" || role.role_priority == null
+                                                    ? <span className="text-gray-400">—</span>
+                                                    : <span className="px-2 py-1 bg-purple-100 text-purple-800 rounded-full text-xs font-medium">{role.role_priority}</span>
+                                                }
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center gap-2">
+                                                    <Key size={14} className="text-gray-400" />
+                                                    <span className="text-sm text-gray-900">{permCount} permission{permCount !== 1 ? 's' : ''}</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="flex space-x-3">
+                                                    {checkPermission("role", "update") && (
+                                                        <button
+                                                            className="text-blue-600 hover:text-blue-800 p-2 rounded-full hover:bg-blue-100 transition duration-200"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                openEditRole(role);
+                                                            }}
+                                                            title="Edit role"
+                                                        >
+                                                            <Edit size={18} />
+                                                        </button>
+                                                    )}
+                                                    {
+                                                        checkPermission("role", "create") || checkPermission("role", "update") && (
+                                                        <button
+                                                        className="text-green-600 hover:text-green-800 p-2 rounded-full hover:bg-green-100 transition duration-200"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            openTemplateModal(role);
+                                                        }}
+                                                        title="Apply template"
+                                                    >
+                                                                <Copy size={18} />
+                                                        </button>
+                                                    )}
+                                                    
+                                                    {checkPermission("role", "delete") && (
+                                                        <button
+                                                            className="text-red-600 hover:text-red-800 p-2 rounded-full hover:bg-red-100 transition duration-200"
+                                                            onClick={async (e) => {
+                                                                e.stopPropagation();
+                                                                if (confirm(`Are you sure you want to delete "${role.role_name}"?`)) {
+                                                                    await deleteRoleAction(role.id);
+                                                                }
+                                                            }}
+                                                            title="Delete role"
+                                                        >
+                                                            <Trash2 size={18} />
+                                                        </button>
+                                                    )}
 
-                                    {/* Expanded row: permissions with toggles */}
+                                                </div>
+                                            </td>
+                                        </tr>
                                     {expandedRoleId === role.id && (
                                         <tr>
                                             <td colSpan={5} className="px-4 py-4 bg-indigo-50/20">
-                                                <div className="flex flex-col md:flex-row gap-6">
+                                                <div className="flex flex-col gap-6">
                                                     {/* Permissions list */}
                                                     <div className="flex-1">
                                                         <h3 className="font-medium text-indigo-800 mb-3 flex items-center gap-2">
@@ -513,47 +553,117 @@ export default function RolesPage() {
                                                             </div>
                                                         ) : (
                                                             <div className="grid gap-3">
-                                                                {Object.entries(role.permissions).map(([pid, access]) => (
-                                                                    <div key={pid} className="bg-white border flex border-gray-200 rounded-lg p-3 shadow-sm">
-                                                                        <div className=" items-center justify-between mb-3 w-1/2">
-                                                                            <div className="font-medium text-indigo-700">{access.name}</div>
-                                                                            <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">ID: {pid}</span>
-                                                                        </div>
-                                                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                                                                            {["can_create", "can_update", "can_delete", "can_export"].map((field) => (
-                                                                                <label key={field} className="flex items-center gap-2 text-sm p-2 rounded  hover:bg-indigo-50/50 transition-colors cursor-pointer">
-                                                                                    <input
-                                                                                        type="checkbox"
-                                                                                        checked={!!access[field]}
-                                                                                        onChange={() => toggleAssigned(role, Number(pid), field)}
-                                                                                        className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
-                                                                                    />
-                                                                                    <span className="capitalize">{field.replace("can_", "")}</span>
-                                                                                </label>
-                                                                            ))}
-                                                                        </div>
-                                                                    </div>
-                                                                ))}
+                                                               {Object.entries(role.permissions).map(([pid, access]) => (
+  <div
+    key={pid}
+    className="bg-white border flex border-gray-200 rounded-lg p-3 shadow-sm"
+  >
+    <div className=" items-center justify-between mb-3 w-1/2">
+      <div className="font-medium text-indigo-700">{access.name}</div>
+      <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+        ID: {pid}
+      </span>
+    </div>
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+      {["can_create", "can_update", "can_delete", "can_export"].map((field) => (
+        <label
+          key={field}
+          className={`flex items-center gap-2 text-sm p-2 rounded transition-colors ${
+            !isEditPermissions
+              ? "opacity-50 cursor-not-allowed"
+              : "hover:bg-indigo-50/50 cursor-pointer"
+          }`}
+        >
+          <input
+            type="checkbox"
+            checked={!!access[field]}
+            disabled={!isEditPermissions}
+            onChange={() =>
+              isEditPermissions && toggleAssigned(role, Number(pid), field)
+            }
+            className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
+          />
+          <span className="capitalize">{field.replace("can_", "")}</span>
+        </label>
+      ))}
+    </div>
+  </div>
+))}
+
                                                             </div>
                                                         )}
                                                     </div>
+
+                                                    {checkPermission("role", "update") && (
+                                                        <div className="flex justify-end">
+                                                            <button
+                                                                onClick={async () => {
+                                                                    if (!token) return showToast("Not authenticated", "error");
+                                                                    const updates = roleUpdates[role.id] || [];
+                                                                    if (!updates.length) return showToast("No changes to save", "error");
+
+                                                                    try {
+                                                                        await updateRolePermissions(token, {
+                                                                            role_name: role.role_name,
+                                                                            updates,
+                                                                        });
+                                                                        showToast("Permissions updated successfully");
+                                                                        await loadRoles();
+                                                                        setRoleUpdates((prev) => ({ ...prev, [role.id]: [] }));
+
+                                                                        if (role.role_name === currentUserRole) {
+                                                                            await fetchPermissionsForRole(role.role_name, token);
+                                                                        }
+                                                                    } catch (err) {
+                                                                        console.error(err);
+                                                                        showToast("Failed to update permissions", "error");
+                                                                    }
+                                                                }}
+                                                                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                                                            >
+                                                                <Save size={16} className="inline-block mr-1" /> Save Changes
+                                                            </button>
+                                                        </div>
+                                                    )}
 
 
                                                 </div>
                                             </td>
                                         </tr>
                                     )}
+
                                 </React.Fragment>
                             );
                         })}
+                        {filteredRoles.length === 0 && (
+                            <tr>
+                                <td colSpan="5" className="px-6 py-12 text-center">
+                                    <div className="flex flex-col items-center justify-center text-gray-400">
+                                        <Shield size={48} className="mb-4 opacity-50" />
+                                        <p className="text-lg font-medium text-gray-500 mb-1">
+                                            {searchQuery ? "No roles match your search" : "No roles found"}
+                                        </p>
+                                        <p className="text-sm">
+                                            {searchQuery 
+                                                ? "Try adjusting your search criteria" 
+                                                : "Get started by creating your first role"
+                                            }
+                                        </p>
+                                        {!searchQuery && checkPermission("role", "create") && (
+                                            <button
+                                                onClick={openAddRole}
+                                                className="mt-4 inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-md shadow hover:bg-purple-700 transition duration-300"
+                                            >
+                                                <Plus size={20} className="mr-2" />
+                                                Add New Role
+                                            </button>
+                                        )}
+                                    </div>
+                                </td>
+                            </tr>
+                        )}
                     </tbody>
                 </table>
-
-                {filteredRoles.length === 0 && (
-                    <div className="p-8 text-center text-gray-500">
-                        {searchQuery ? "No roles match your search" : "No roles found. Create your first role to get started."}
-                    </div>
-                )}
             </div>
 
             {/* Add / Edit role modal */}
@@ -942,6 +1052,7 @@ export default function RolesPage() {
                     </div>
                 </div>
             )}
+        </div>
         </div>
     );
 }

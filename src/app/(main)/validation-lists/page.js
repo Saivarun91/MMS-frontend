@@ -20,13 +20,15 @@ export default function ValidationListsPage() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
   const [formData, setFormData] = useState({
     listname: "",
     listvalue: "",
   });
 
   // ✅ Role state
-  const { user } = useAuth();
+  const { user, checkPermission, token } = useAuth();
   const [role, setRole] = useState(null);
 
   useEffect(() => {
@@ -41,7 +43,7 @@ export default function ValidationListsPage() {
   // Load data on component mount
   useEffect(() => {
     loadValidationLists();
-  }, []);
+  }, [token]);
 
   const loadValidationLists = async () => {
     try {
@@ -66,6 +68,16 @@ export default function ValidationListsPage() {
 
     return matchesSearch;
   });
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredValidationLists.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentValidationLists = filteredValidationLists.slice(startIndex, endIndex);
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+  };
 
   // Modal handlers
   const handleAddNew = () => {
@@ -108,6 +120,19 @@ export default function ValidationListsPage() {
       return;
     }
 
+    // Check permission before proceeding
+    if (editingList) {
+      if (!checkPermission("validation", "update")) {
+        setError("You don't have permission to update validation lists");
+        return;
+      }
+    } else {
+      if (!checkPermission("validation", "create")) {
+        setError("You don't have permission to create validation lists");
+        return;
+      }
+    }
+
     try {
       setSaving(true);
       setError(null);
@@ -141,6 +166,12 @@ export default function ValidationListsPage() {
 
   const handleDelete = async (list_id) => {
     if (window.confirm("Are you sure you want to delete this validation list? This action cannot be undone.")) {
+      // Check permission before proceeding
+      if (!checkPermission("validation", "delete")) {
+        setError("You don't have permission to delete validation lists");
+        return;
+      }
+      
       try {
         setError(null);
         const token = localStorage.getItem("token");
@@ -159,15 +190,15 @@ export default function ValidationListsPage() {
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <div>
-            <h1 className="font-default text-2xl font-bold text-gray-800 flex items-center">
+            {/* <h1 className="font-default text-2xl font-bold text-gray-800 flex items-center">
               <CheckSquare className="mr-2" size={28} />
               Validation Lists Management
-            </h1>
+            </h1> */}
             {/* <p className="text-gray-600">Maintain lists for validation and compliance across the system</p> */}
           </div>
           <div className="flex items-center gap-3">
-            <BackButton href="/governance" label="Back to Governance" />
-            {role === "MDGT" && (
+            {/* <BackButton href="/governance" label="Back to Governance" /> */}
+            {checkPermission("validation", "create") && (
               <button
                 onClick={handleAddNew}
                 className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
@@ -219,65 +250,129 @@ export default function ValidationListsPage() {
         ) : (
           /* Validation Lists Table */
           <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="font-default px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">List Name</th>
-                    <th className="font-default px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Values</th>
-                    <th className="font-default px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created</th>
-                    <th className="font-default px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Updated</th>
-                    <th className="font-default px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredValidationLists.length > 0 ? (
-                    filteredValidationLists.map((list) => (
-                      <tr key={list.list_id} className="hover:bg-gray-50">
-                        <td className="font-default px-6 py-4 text-sm font-medium text-gray-900">{list.listname}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900 max-w-xs">
-                          <div className="truncate" title={Array.isArray(list.listvalue) ? list.listvalue.join(', ') : JSON.stringify(list.listvalue)}>
-                            {Array.isArray(list.listvalue) ? list.listvalue.join(', ') : JSON.stringify(list.listvalue)}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-900">{list.created ? new Date(list.created).toLocaleDateString() : '-'}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900">{list.updated ? new Date(list.updated).toLocaleDateString() : '-'}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900">
-                          <div className="flex space-x-2">
-                            {role === "MDGT" && (
-                              <>
-                                <button
-                                  onClick={() => handleEdit(list)}
-                                  className="text-blue-600 hover:text-blue-800"
-                                  title="Edit"
-                                >
-                                  <Edit size={16} />
-                                </button>
-                                <button
-                                  onClick={() => handleDelete(list.list_id)}
-                                  className="text-red-600 hover:text-red-800"
-                                  title="Delete"
-                                >
-                                  <Trash2 size={16} />
-                                </button>
-                              </>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan="5" className="px-6 py-4 text-center text-sm text-gray-500">
-                        {validationLists.length === 0
-                          ? "No validation lists found. Add a new list to get started."
-                          : "No validation lists found matching your criteria."}
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+           <div className="overflow-x-auto">
+      <table className="w-full border-collapse">
+        {/* Table Header */}
+        <thead className="bg-gradient-to-r from-purple-600 via-pink-500 to-red-500 text-white">
+          <tr>
+            <th className="px-6 py-3 text-left text-sm font-semibold uppercase">List Name</th>
+            <th className="px-6 py-3 text-left text-sm font-semibold uppercase">Values</th>
+            <th className="px-6 py-3 text-left text-sm font-semibold uppercase">Created</th>
+            <th className="px-6 py-3 text-left text-sm font-semibold uppercase">Updated</th>
+            <th className="px-6 py-3 text-left text-sm font-semibold uppercase">Actions</th>
+          </tr>
+        </thead>
+
+        {/* Table Body */}
+        <tbody>
+          {currentValidationLists.length > 0 ? (
+            currentValidationLists.map((list, index) => (
+              <tr
+                key={list.list_id}
+                className={`transition-all duration-200 ${
+                  index % 2 === 0 ? "bg-gray-50" : "bg-gray-100"
+                } hover:bg-purple-50`}
+              >
+                <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                  <div className="inline-block px-2 py-1 bg-purple-100 text-purple-800 rounded-lg shadow-sm">
+                    {list.listname}
+                  </div>
+                </td>
+                <td className="px-6 py-4 text-sm text-gray-900 max-w-xs">
+                  <div
+                    className="truncate"
+                    title={Array.isArray(list.listvalue) ? list.listvalue.join(', ') : JSON.stringify(list.listvalue)}
+                  >
+                    {Array.isArray(list.listvalue) ? list.listvalue.join(', ') : JSON.stringify(list.listvalue)}
+                  </div>
+                </td>
+                <td className="px-6 py-4 text-sm text-gray-900">
+                  {list.created ? new Date(list.created).toLocaleDateString() : '-'}
+                </td>
+                <td className="px-6 py-4 text-sm text-gray-900">
+                  {list.updated ? new Date(list.updated).toLocaleDateString() : '-'}
+                </td>
+                <td className="px-6 py-4 text-sm text-gray-900">
+                  <div className="flex space-x-2">
+                    {checkPermission("validation", "update") && (
+                      <button
+                        onClick={() => handleEdit(list)}
+                        className="text-blue-600 hover:text-blue-800 p-2 rounded-full hover:bg-blue-50 transition duration-200"
+                        title="Edit"
+                      >
+                        <Edit size={16} />
+                      </button>
+                    )}
+                    {checkPermission("validation", "delete") && (
+                      <button
+                        onClick={() => handleDelete(list.list_id)}
+                        className="text-red-600 hover:text-red-800 p-2 rounded-full hover:bg-red-50 transition duration-200"
+                        title="Delete"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ))
+          ) : (
+            <tr>
+              <td colSpan="5" className="px-6 py-8 text-center text-sm text-gray-500">
+                {validationLists.length === 0
+                  ? "No validation lists found. Add a new list to get started."
+                  : "No validation lists found matching your criteria."}
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+            {/* Pagination */}
+            {totalPages > 1 && (
+      <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+        <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm text-gray-700">
+              Showing <span className="font-medium">{startIndex + 1}</span> to{' '}
+              <span className="font-medium">{Math.min(endIndex, filteredValidationLists.length)}</span> of{' '}
+              <span className="font-medium">{filteredValidationLists.length}</span> results
+            </p>
+          </div>
+          <div>
+            <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+              <button
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Previous
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                <button
+                  key={page}
+                  onClick={() => handlePageChange(page)}
+                  className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                    page === currentPage
+                      ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
+                      : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                  }`}
+                >
+                  {page}
+                </button>
+              ))}
+              <button
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Next
+              </button>
+            </nav>
+          </div>
+        </div>
+      </div>
+    )}
           </div>
         )}
 

@@ -7,8 +7,7 @@ import {
   updateProject, 
   deleteProject 
 } from "@/lib/api";
-import {useAuth} from "@/context/AuthContext";
-import BackButton from "@/components/BackButton";
+import {useAuth} from "@/context/AuthContext";  
 
 export default function ProjectsPage() {
     const [projects, setProjects] = useState([]);
@@ -23,20 +22,23 @@ export default function ProjectsPage() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState(null);
-    const {user,token,role} = useAuth();
+    const {user,token,role,checkPermission} = useAuth();
     // Load data on component mount
     useEffect(() => {
-        loadProjects();
-    }, []);
+        if (token) {
+            loadProjects();
+        }
+    }, [token]);
 
     const loadProjects = async () => {
+        if (!token) return; // don't try if no token yet
         try {
             setLoading(true);
-            // const token = localStorage.getItem("token");
-            if (!token) {
-                setError("No authentication token found");
-                return;
-            }
+            // // const token = localStorage.getItem("token");
+            // if (!token) {
+            //     setError("No authentication token found");
+            //     return;
+            // }
             
             const data = await fetchProjects(token);
             setProjects(data || []);
@@ -52,6 +54,12 @@ export default function ProjectsPage() {
     const handleAdd = async () => {
         if (!newProject.project_code || !newProject.project_name) {
             setError("Please fill in required fields: Project Code and Project Name");
+            return;
+        }
+
+        // Check permission before proceeding
+        if (!checkPermission("project", "create")) {
+            setError("You don't have permission to create projects");
             return;
         }
 
@@ -82,6 +90,12 @@ export default function ProjectsPage() {
             return;
         }
 
+        // Check permission before proceeding
+        if (!checkPermission("project", "update")) {
+            setError("You don't have permission to update projects");
+            return;
+        }
+
         try {
             setSaving(true);
             // const token = localStorage.getItem("token");
@@ -106,6 +120,12 @@ export default function ProjectsPage() {
     // ✅ Delete Project with confirmation
     const handleDelete = async (id, name) => {
         if (window.confirm(`Are you sure you want to delete project "${name}"?`)) {
+            // Check permission before proceeding
+            if (!checkPermission("project", "delete")) {
+                setError("You don't have permission to delete projects");
+                return;
+            }
+            
             try {
                 //  const token = localStorage.getItem("token");
                 if (!token) {
@@ -145,22 +165,18 @@ export default function ProjectsPage() {
     );
 
     return (
-        <div className="min-h-screen bg-gray-50 p-6">
+        <div className="min-h-screen bg-gray-50 p-4">
             <div className="max-w-7xl mx-auto">
                 {/* Header */}
                 <div className="flex justify-between items-center mb-6">
                     <div>
-                        <h1 className="font-default text-2xl font-bold text-gray-800 flex items-center">
+                        {/* <h1 className="font-default text-2xl font-bold text-gray-800 flex items-center">
                             <Folder className="mr-2" size={28} />
                             Project Management
                         </h1>
-                        <p className="text-gray-600">Create and manage your projects</p>
+                        <p className="text-gray-600">Create and manage your projects</p> */}
                     </div>
-                    <div className="flex items-center gap-3">
-                        <BackButton 
-                            href="/governance" 
-                            label="Back to Governance"
-                        />
+                    {checkPermission("project", "create") && (
                         <button
                             onClick={openAddModal}
                             className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-200"
@@ -168,7 +184,7 @@ export default function ProjectsPage() {
                             <Plus size={18} className="mr-2" />
                             Add Project
                         </button>
-                    </div>
+                    )}
                 </div>
 
                 {/* Search Section */}
@@ -207,64 +223,84 @@ export default function ProjectsPage() {
                         <p className="text-gray-600">Loading projects...</p>
                     </div>
                 ) : (
-                    /* Projects Table */
-                    <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-                        <div className="overflow-x-auto">
-                            <table className="w-full">
-                                <thead className="bg-gray-50">
-                                    <tr>
-                                        <th className="font-default px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Code</th>
-                                        <th className="font-default px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                                        <th className="font-default px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created</th>
-                                        <th className="font-default px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created By</th>
-                                        <th className="font-default px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Last Updated</th>
-                                        <th className="font-default px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Updated By</th>
-                                        <th className="font-default px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="bg-white divide-y divide-gray-200">
-                                    {filteredProjects.length > 0 ? (
-                                        filteredProjects.map((proj) => (
-                                            <tr key={proj.id || proj.project_code} className="hover:bg-gray-50 transition duration-150">
-                                                <td className="font-default px-6 py-4 text-sm font-medium text-gray-900">{proj.project_code}</td>
-                                                <td className="px-6 py-4 text-sm text-gray-900">{proj.project_name}</td>
-                                                <td className="px-6 py-4 text-sm text-gray-700">{proj.created}</td>
-                                                <td className="px-6 py-4 text-sm text-gray-700">{proj.createdby || "N/A"}</td>
-                                                <td className="px-6 py-4 text-sm text-gray-700">{proj.updated}</td>
-                                                <td className="px-6 py-4 text-sm text-gray-700">{proj.updatedby || "N/A"}</td>
-                                                <td className="px-6 py-4 text-sm text-gray-700">
-                                                    <div className="flex space-x-2">
-                                                        <button
-                                                            onClick={() => openEditModal(proj)}
-                                                            className="text-blue-600 hover:text-blue-800"
-                                                            title="Edit"
-                                                        >
-                                                            <Edit size={16} />
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleDelete(proj.id || proj.project_code, proj.project_name)}
-                                                            className="text-red-600 hover:text-red-800"
-                                                            title="Delete"
-                                                        >
-                                                            <Trash2 size={16} />
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))
-                                    ) : (
-                                        <tr>
-                                            <td colSpan="7" className="px-6 py-4 text-center text-sm text-gray-500">
-                                                {projects.length === 0 
-                                                    ? "No projects found. Add a new project to get started." 
-                                                    : "No projects match your search criteria."}
-                                            </td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+                    <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+  <div className="overflow-x-auto">
+    <table className="w-full border-collapse">
+      {/* Table Header */}
+      <thead className="bg-gradient-to-r from-purple-600 via-pink-500 to-red-500 text-white shadow-md">
+        <tr>
+          <th className="px-6 py-3 text-left text-sm font-semibold uppercase tracking-wider">Code</th>
+          <th className="px-6 py-3 text-left text-sm font-semibold uppercase tracking-wider">Name</th>
+          <th className="px-6 py-3 text-left text-sm font-semibold uppercase tracking-wider">Created</th>
+          <th className="px-6 py-3 text-left text-sm font-semibold uppercase tracking-wider">Created By</th>
+          <th className="px-6 py-3 text-left text-sm font-semibold uppercase tracking-wider">Last Updated</th>
+          <th className="px-6 py-3 text-left text-sm font-semibold uppercase tracking-wider">Updated By</th>
+          <th className="px-6 py-3 text-left text-sm font-semibold uppercase tracking-wider">Actions</th>
+        </tr>
+      </thead>
+
+      {/* Table Body */}
+      <tbody>
+        {filteredProjects.length > 0 ? (
+          filteredProjects.map((proj, index) => (
+            <tr
+              key={proj.id || proj.project_code}
+              className={`transition-all duration-200 ${
+                index % 2 === 0 ? "bg-gray-50" : "bg-gray-100"
+              } hover:bg-purple-50`}
+            >
+              <td className="px-6 py-4">
+                <div className="inline-block px-2 py-1 bg-purple-100 text-purple-800 font-mono rounded-lg shadow-sm text-sm">
+                  {proj.project_code}
+                </div>
+              </td>
+              <td className="px-6 py-4 text-sm text-gray-900">{proj.project_name}</td>
+              <td className="px-6 py-4 text-sm text-gray-700">{proj.created}</td>
+              <td className="px-6 py-4 text-sm text-gray-700">{proj.createdby || "N/A"}</td>
+              <td className="px-6 py-4 text-sm text-gray-700">{proj.updated}</td>
+              <td className="px-6 py-4 text-sm text-gray-700">{proj.updatedby || "N/A"}</td>
+              <td className="px-6 py-4 text-sm text-gray-700">
+                <div className="flex space-x-2">
+                  {checkPermission("project", "update") && (
+                    <button
+                      onClick={() => openEditModal(proj)}
+                      className="text-blue-600 hover:text-blue-800 p-2 rounded-full hover:bg-blue-50 transition duration-200"
+                      title="Edit"
+                    >
+                      <Edit size={16} />
+                    </button>
+                  )}
+                  {checkPermission("project", "delete") && (
+                    <button
+                      onClick={() => handleDelete(proj.id || proj.project_code, proj.project_name)}
+                      className="text-red-600 hover:text-red-800 p-2 rounded-full hover:bg-red-50 transition duration-200"
+                      title="Delete"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  )}
+                </div>
+              </td>
+            </tr>
+          ))
+        ) : (
+          <tr>
+            <td
+              colSpan="7"
+              className="px-6 py-8 text-center text-sm text-gray-500"
+            >
+              {projects.length === 0
+                ? "No projects found. Add a new project to get started."
+                : "No projects match your search criteria."}
+            </td>
+          </tr>
+        )}
+      </tbody>
+    </table>
+  </div>
+</div>
+                  
+                  
                 )}
 
                 {/* Info Section */}

@@ -22,7 +22,9 @@ export default function ProjectsPage() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState(null);
-    const {user,token,role} = useAuth();
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage] = useState(10);
+    const {user,token,role,checkPermission} = useAuth();
     // Load data on component mount
     useEffect(() => {
         loadProjects();
@@ -54,6 +56,12 @@ export default function ProjectsPage() {
             return;
         }
 
+        // Check permission before proceeding
+        if (!checkPermission("project", "create")) {
+            setError("You don't have permission to create projects");
+            return;
+        }
+
         try {
             setSaving(true);
             // const token = localStorage.getItem("token");
@@ -81,6 +89,12 @@ export default function ProjectsPage() {
             return;
         }
 
+        // Check permission before proceeding
+        if (!checkPermission("project", "update")) {
+            setError("You don't have permission to update projects");
+            return;
+        }
+
         try {
             setSaving(true);
             // const token = localStorage.getItem("token");
@@ -105,6 +119,12 @@ export default function ProjectsPage() {
     // ✅ Delete Project with confirmation
     const handleDelete = async (id, name) => {
         if (window.confirm(`Are you sure you want to delete project "${name}"?`)) {
+            // Check permission before proceeding
+            if (!checkPermission("project", "delete")) {
+                setError("You don't have permission to delete projects");
+                return;
+            }
+            
             try {
                 //  const token = localStorage.getItem("token");
                 if (!token) {
@@ -143,6 +163,16 @@ export default function ProjectsPage() {
         project.project_code.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
+    // Pagination logic
+    const totalPages = Math.ceil(filteredProjects.length / itemsPerPage);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const currentProjects = filteredProjects.slice(startIndex, endIndex);
+
+    const handlePageChange = (page) => {
+        setCurrentPage(page);
+    };
+
     return (
         <div className="min-h-screen bg-gray-50 p-6">
             <div className="max-w-7xl mx-auto">
@@ -155,13 +185,15 @@ export default function ProjectsPage() {
                         </h1>
                         <p className="text-gray-600">Create and manage your projects</p>
                     </div>
-                    <button
-                        onClick={openAddModal}
-                        className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-200"
-                    >
-                        <Plus size={18} className="mr-2" />
-                        Add Project
-                    </button>
+                    {checkPermission("project", "create") && (
+                        <button
+                            onClick={openAddModal}
+                            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-200"
+                        >
+                            <Plus size={18} className="mr-2" />
+                            Add Project
+                        </button>
+                    )}
                 </div>
 
                 {/* Search Section */}
@@ -216,8 +248,8 @@ export default function ProjectsPage() {
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
-                                    {filteredProjects.length > 0 ? (
-                                        filteredProjects.map((proj) => (
+                                    {currentProjects.length > 0 ? (
+                                        currentProjects.map((proj) => (
                                             <tr key={proj.id || proj.project_code} className="hover:bg-gray-50 transition duration-150">
                                                 <td className="font-default px-6 py-4 text-sm font-medium text-gray-900">{proj.project_code}</td>
                                                 <td className="px-6 py-4 text-sm text-gray-900">{proj.project_name}</td>
@@ -227,20 +259,24 @@ export default function ProjectsPage() {
                                                 <td className="px-6 py-4 text-sm text-gray-700">{proj.updatedby || "N/A"}</td>
                                                 <td className="px-6 py-4 text-sm text-gray-700">
                                                     <div className="flex space-x-2">
-                                                        <button
-                                                            onClick={() => openEditModal(proj)}
-                                                            className="text-blue-600 hover:text-blue-800"
-                                                            title="Edit"
-                                                        >
-                                                            <Edit size={16} />
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleDelete(proj.id || proj.project_code, proj.project_name)}
-                                                            className="text-red-600 hover:text-red-800"
-                                                            title="Delete"
-                                                        >
-                                                            <Trash2 size={16} />
-                                                        </button>
+                                                        {checkPermission("project", "update") && (
+                                                            <button
+                                                                onClick={() => openEditModal(proj)}
+                                                                className="text-blue-600 hover:text-blue-800"
+                                                                title="Edit"
+                                                            >
+                                                                <Edit size={16} />
+                                                            </button>
+                                                        )}
+                                                        {checkPermission("project", "delete") && (
+                                                            <button
+                                                                onClick={() => handleDelete(proj.id || proj.project_code, proj.project_name)}
+                                                                className="text-red-600 hover:text-red-800"
+                                                                title="Delete"
+                                                            >
+                                                                <Trash2 size={16} />
+                                                            </button>
+                                                        )}
                                                     </div>
                                                 </td>
                                             </tr>
@@ -257,6 +293,68 @@ export default function ProjectsPage() {
                                 </tbody>
                             </table>
                         </div>
+                        
+                        {/* Pagination */}
+                        {totalPages > 1 && (
+                            <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+                                <div className="flex-1 flex justify-between sm:hidden">
+                                    <button
+                                        onClick={() => handlePageChange(currentPage - 1)}
+                                        disabled={currentPage === 1}
+                                        className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        Previous
+                                    </button>
+                                    <button
+                                        onClick={() => handlePageChange(currentPage + 1)}
+                                        disabled={currentPage === totalPages}
+                                        className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        Next
+                                    </button>
+                                </div>
+                                <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                                    <div>
+                                        <p className="text-sm text-gray-700">
+                                            Showing <span className="font-medium">{startIndex + 1}</span> to{' '}
+                                            <span className="font-medium">{Math.min(endIndex, filteredProjects.length)}</span> of{' '}
+                                            <span className="font-medium">{filteredProjects.length}</span> results
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                                            <button
+                                                onClick={() => handlePageChange(currentPage - 1)}
+                                                disabled={currentPage === 1}
+                                                className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                            >
+                                                Previous
+                                            </button>
+                                            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                                                <button
+                                                    key={page}
+                                                    onClick={() => handlePageChange(page)}
+                                                    className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                                                        page === currentPage
+                                                            ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
+                                                            : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                                                    }`}
+                                                >
+                                                    {page}
+                                                </button>
+                                            ))}
+                                            <button
+                                                onClick={() => handlePageChange(currentPage + 1)}
+                                                disabled={currentPage === totalPages}
+                                                className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                            >
+                                                Next
+                                            </button>
+                                        </nav>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
 

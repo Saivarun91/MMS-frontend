@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CheckCircle, Loader2, User, Building2, ShieldCheck, Search, Filter, Users, Sparkles, CheckSquare, Square, Check } from "lucide-react";
+import { CheckCircle, Loader2, User, Building2, ShieldCheck, Search, Filter, Users, Sparkles, CheckSquare, Square, Check,Mail } from "lucide-react";
 import {useAuth} from "@/context/AuthContext";
 
 export default function ApprovalsPage() {
@@ -17,7 +17,7 @@ export default function ApprovalsPage() {
     const [selectedEmployees, setSelectedEmployees] = useState(new Set());
     const [bulkRole, setBulkRole] = useState("");
 
-    const {user,token,role} = useAuth();
+    const {user,token,role,checkPermission} = useAuth();
 
     const showToast = (message, type = "info") => {
         window.dispatchEvent(
@@ -112,6 +112,12 @@ export default function ApprovalsPage() {
             return;
         }
 
+        // Check permission before proceeding
+        if (!checkPermission("approval", "update")) {
+            showToast("You don't have permission to assign roles", "error");
+            return;
+        }
+
         setAssigningId(empId);
         try {
             const res = await fetch(
@@ -157,6 +163,12 @@ export default function ApprovalsPage() {
             return;
         }
 
+        // Check permission before proceeding
+        if (!checkPermission("approval", "update")) {
+            showToast("You don't have permission to assign roles", "error");
+            return;
+        }
+
         setAssigningMultiple(true);
 
         try {
@@ -194,11 +206,11 @@ export default function ApprovalsPage() {
 
     return (
         <div className="p-6 max-w-7xl mx-auto">
-            <div className="flex items-center gap-2 mb-2">
+            {/* <div className="flex items-center gap-2 mb-2">
                 <Sparkles className="text-violet-600" size={28} />
-                <h1 className="text-3xl font-bold text-violet-700">Role Assignment</h1>
-            </div>
-            <p className="text-gray-600 mb-8">Assign appropriate roles to employees who don't have one yet</p>
+                <h1 className="text-3xl font-bold text-violet-700">Role Assignment</h1> */}
+            {/* </div> */}
+            {/* <p className="text-gray-600 mb-8">Assign appropriate roles to employees who don't have one yet</p> */}
 
             {/* Stats and Filters */}
             <div className="bg-gradient-to-r from-violet-50 to-purple-50 rounded-xl p-6 mb-6 border border-violet-100 shadow-sm">
@@ -297,119 +309,149 @@ export default function ApprovalsPage() {
                     <p className="text-violet-700">Loading employees...</p>
                 </div>
             ) : filteredEmployees.length === 0 ? (
-                <div className="text-center py-16 bg-white rounded-2xl shadow-sm border border-violet-100">
-                    <div className="mx-auto w-24 h-24 flex items-center justify-center bg-violet-100 rounded-full mb-6">
-                        <CheckCircle className="text-violet-600" size={48} />
+                <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
+                    <div className="overflow-x-auto">
+                        <table className="w-full border-separate border-spacing-0 shadow-lg rounded-lg overflow-hidden">
+                            <thead>
+                                <tr className="bg-gradient-to-r from-purple-600 via-pink-500 to-red-500 text-white uppercase tracking-wide">
+                                    <th className="px-6 py-4 text-left text-sm font-semibold">Select</th>
+                                    <th className="px-6 py-4 text-left text-sm font-semibold">Employee</th>
+                                    <th className="px-6 py-4 text-left text-sm font-semibold">Company</th>
+                                    <th className="px-6 py-4 text-left text-sm font-semibold">Role</th>
+                                    <th className="px-6 py-4 text-left text-sm font-semibold">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colSpan="5" className="px-6 py-12 text-center">
+                                        <div className="flex flex-col items-center justify-center text-gray-400">
+                                            <Users size={48} className="mb-4 opacity-50" />
+                                            <p className="text-lg font-medium text-gray-500 mb-1">
+                                                {employees.length === 0 ? "All employees have roles assigned" : "No employees found"}
+                                            </p>
+                                            <p className="text-sm">
+                                                {employees.length === 0
+                                                    ? "You're all caught up! All employees have roles assigned."
+                                                    : "Try adjusting your search criteria or filters."}
+                                            </p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
-                    <h3 className="text-xl font-semibold text-violet-700 mb-2">All Set!</h3>
-                    <p className="text-gray-600 max-w-md mx-auto">
-                        {employees.length === 0
-                            ? "All employees have roles assigned. You're all caught up!"
-                            : "No employees match your current filters. Try adjusting your search criteria."}
-                    </p>
                 </div>
             ) : (
-                <div className="bg-white rounded-2xl shadow-sm border border-violet-100 overflow-hidden">
-                    {/* Table Header */}
-                    <div className="grid grid-cols-12 gap-4 p-4 border-b border-violet-200 bg-violet-50 text-violet-700 font-medium">
-                        <div className="col-span-1 flex items-center">
-                            <button
-                                onClick={toggleSelectAll}
-                                className="p-1 rounded hover:bg-violet-100 transition-colors"
-                            >
-                                {selectedEmployees.size === filteredEmployees.length ? (
-                                    <CheckSquare size={20} className="text-violet-600" />
-                                ) : (
-                                    <Square size={20} className="text-violet-400" />
-                                )}
-                            </button>
-                        </div>
-                        <div className="col-span-4">Employee</div>
-                        <div className="col-span-3">Company</div>
-                        <div className="col-span-3">Role</div>
-                        <div className="col-span-1">Actions</div>
-                    </div>
+                <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
+                    <div className="overflow-x-auto">
+                        <table className="w-full border-separate border-spacing-0 shadow-lg rounded-lg overflow-hidden">
+                            {/* Table Header */}
+                            <thead>
+                                <tr className="bg-gradient-to-r from-purple-600 via-pink-500 to-red-500 text-white uppercase tracking-wide">
+                                    <th className="px-6 py-4 text-left text-sm font-semibold">
+                                        <button
+                                            onClick={toggleSelectAll}
+                                            className="p-1 rounded hover:bg-white/20 transition-colors"
+                                        >
+                                            {selectedEmployees.size === filteredEmployees.length ? (
+                                                <CheckSquare size={20} />
+                                            ) : (
+                                                <Square size={20} />
+                                            )}
+                                        </button>
+                                    </th>
+                                    <th className="px-6 py-4 text-left text-sm font-semibold">Employee</th>
+                                    <th className="px-6 py-4 text-left text-sm font-semibold">Company</th>
+                                    <th className="px-6 py-4 text-left text-sm font-semibold">Role</th>
+                                    <th className="px-6 py-4 text-left text-sm font-semibold">Actions</th>
+                                </tr>
+                            </thead>
 
-                    {/* Employee List */}
-                    <div className="divide-y divide-violet-100">
-                        {filteredEmployees.map((emp) => (
-                            <div
-                                key={emp.emp_id}
-                                className={`grid grid-cols-12 gap-4 p-4 transition-colors ${selectedEmployees.has(emp.emp_id) ? 'bg-violet-50' : 'hover:bg-violet-50/50'}`}
-                            >
-                                {/* Checkbox */}
-                                <div className="col-span-1 flex items-center">
-                                    <button
-                                        onClick={() => toggleEmployeeSelection(emp.emp_id)}
-                                        className={`p-1 rounded-full transition-colors ${selectedEmployees.has(emp.emp_id) ? 'bg-violet-100 text-violet-600' : 'hover:bg-violet-100 text-violet-400'}`}
+                            {/* Table Body */}
+                            <tbody>
+                                {filteredEmployees.map((emp, index) => (
+                                    <tr
+                                        key={emp.emp_id}
+                                        className={`transition-all duration-300 hover:bg-purple-50 ${
+                                            index % 2 === 0 ? "bg-gray-50" : "bg-gray-100"
+                                        }`}
                                     >
-                                        {selectedEmployees.has(emp.emp_id) ? (
-                                            <Check size={18} />
-                                        ) : (
-                                            <Square size={18} />
-                                        )}
-                                    </button>
-                                </div>
-
-                                {/* Employee Info */}
-                                <div className="col-span-4 flex items-center gap-3">
-                                    <div className="bg-violet-100 p-2 rounded-full">
-                                        <User className="text-violet-700" size={16} />
-                                    </div>
-                                    <div>
-                                        <h3 className="font-medium text-violet-800">{emp.emp_name}</h3>
-                                        <p className="text-sm text-gray-600">{emp.email}</p>
-                                    </div>
-                                </div>
-
-                                {/* Company */}
-                                <div className="col-span-3 flex items-center text-purple-600">
-                                    <Building2 size={16} className="mr-2" />
-                                    <span>{emp.company}</span>
-                                </div>
-
-                                {/* Role Selection */}
-                                <div className="col-span-3">
-                                    <select
-                                        onChange={(e) =>
-                                            setEmployees((prev) =>
-                                                prev.map((r) =>
-                                                    r.emp_id === emp.emp_id
-                                                        ? { ...r, selectedRole: e.target.value }
-                                                        : r
-                                                )
-                                            )
-                                        }
-                                        value={emp.selectedRole || ""}
-                                        className="w-full border border-violet-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:border-transparent"
-                                    >
-                                        <option value="">Select a role</option>
-                                        {roles.map((role, index) => (
-  <option key={`${role.userrole_id || index}-${role.role_name}`} value={role.role_name}>
-    {role.role_name}
-  </option>
-))}
-
-                                    </select>
-                                </div>
-
-                                {/* Actions */}
-                                <div className="col-span-1 flex items-center justify-center">
-                                    <button
-                                        disabled={assigningId === emp.emp_id || !emp.selectedRole}
-                                        onClick={() => handleAssignRole(emp.emp_id, emp.selectedRole)}
-                                        className="p-2 bg-gradient-to-r from-violet-600 to-purple-600 text-white rounded-lg hover:from-violet-700 hover:to-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                                        title="Assign role"
-                                    >
-                                        {assigningId === emp.emp_id ? (
-                                            <Loader2 className="animate-spin" size={16} />
-                                        ) : (
-                                            <CheckCircle size={16} />
-                                        )}
-                                    </button>
-                                </div>
-                            </div>
-                        ))}
+                                        <td className="px-6 py-4">
+                                            <button
+                                                onClick={() => toggleEmployeeSelection(emp.emp_id)}
+                                                className={`p-1 rounded-full transition-colors ${
+                                                    selectedEmployees.has(emp.emp_id) 
+                                                        ? 'bg-purple-100 text-purple-600' 
+                                                        : 'hover:bg-purple-100 text-purple-400'
+                                                }`}
+                                            >
+                                                {selectedEmployees.has(emp.emp_id) ? (
+                                                    <Check size={18} />
+                                                ) : (
+                                                    <Square size={18} />
+                                                )}
+                                            </button>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-3">
+                                                <User className="w-5 h-5 text-blue-600" />
+                                                <div>
+                                                    <div className="font-medium text-gray-900">{emp.emp_name}</div>
+                                                    <div className="text-sm text-gray-500 flex items-center">
+                                                        <Mail className="w-3 h-3 mr-1" />
+                                                        {emp.email}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center text-gray-900">
+                                                <Building2 size={16} className="mr-2 text-purple-600" />
+                                                <span>{emp.company}</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <select
+                                                onChange={(e) =>
+                                                    setEmployees((prev) =>
+                                                        prev.map((r) =>
+                                                            r.emp_id === emp.emp_id
+                                                                ? { ...r, selectedRole: e.target.value }
+                                                                : r
+                                                        )
+                                                    )
+                                                }
+                                                value={emp.selectedRole || ""}
+                                                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white"
+                                            >
+                                                <option value="">Select a role</option>
+                                                {roles.map((role, index) => (
+                                                    <option key={`${role.userrole_id || index}-${role.role_name}`} value={role.role_name}>
+                                                        {role.role_name}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex space-x-3">
+                                                <button
+                                                    disabled={assigningId === emp.emp_id || !emp.selectedRole}
+                                                    onClick={() => handleAssignRole(emp.emp_id, emp.selectedRole)}
+                                                    className="text-green-600 hover:text-green-800 p-2 rounded-full hover:bg-green-100 transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    title="Assign role"
+                                                >
+                                                    {assigningId === emp.emp_id ? (
+                                                        <Loader2 className="animate-spin" size={18} />
+                                                    ) : (
+                                                        <CheckCircle size={18} />
+                                                    )}
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             )}
