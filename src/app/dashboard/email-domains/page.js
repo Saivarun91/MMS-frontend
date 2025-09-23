@@ -304,7 +304,7 @@ export default function EmailDomainsPage() {
                 <li>Email domains control which email addresses can register for accounts</li>
                 <li>Only users with email addresses from allowed domains can sign up</li>
                 <li>Use the search bar to find domains by name</li>
-                <li>Click the "Add Domain" button to create new allowed domains</li>
+                <li>Click the &quot;Add Domain&quot; button to create new allowed domains</li>
                 <li>Use the edit and delete icons to modify or remove domains</li>
               </ul>
             </div>
