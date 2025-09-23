@@ -90,7 +90,7 @@ export default function MaterialSearchPage() {
                   setLoading(true);
                   try {
                     // Use your API host here. You can change to env var: process.env.NEXT_PUBLIC_API_BASE
-                    const res = await fetch("http://127.0.0.1:8000/api/matgroups/search/", {
+                    const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/matgroups/search/`, {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
                       body: JSON.stringify({ query: searchTerm })
