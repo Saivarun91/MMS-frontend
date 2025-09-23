@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import {
-  Plus, Edit, Trash2, Search, Settings, Info, Loader2
+  Plus, Edit, Trash2, Search, Settings, Info, Loader2,PlusCircle
 } from "lucide-react";
 import { fetchMaterialAttributes, createMaterialAttribute, updateMaterialAttribute, deleteMaterialAttribute } from "../../../lib/api";
 import {useAuth} from "@/context/AuthContext";
