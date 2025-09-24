@@ -30,7 +30,7 @@ export default function ApprovalsPage() {
         const fetchEmployees = async () => {
             setLoading(true);
             try {
-                const res = await fetch("http://127.0.0.1:8000/employee/without-role/", {
+                const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/employee/without-role/`, {
                     headers: { Authorization: `Bearer ${token}` },
                 });
                 if (!res.ok) throw new Error("Failed to load employees without role");
@@ -72,7 +72,7 @@ export default function ApprovalsPage() {
     useEffect(() => {
         const fetchRoles = async () => {
             try {
-                const res = await fetch("http://127.0.0.1:8000/userroles/roles/", {
+                const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/userroles/roles/`, {
                     headers: { Authorization: `Bearer ${token}` },
                 });
                 if (!res.ok) throw new Error("Failed to load roles");
@@ -121,7 +121,7 @@ export default function ApprovalsPage() {
         setAssigningId(empId);
         try {
             const res = await fetch(
-                `http://127.0.0.1:8000/employee/assign-role/${empId}/`,
+                `${process.env.NEXT_PUBLIC_API_BASE_URL}/employee/assign-role/${empId}/`,
                 {
                     method: "PUT",
                     headers: {
@@ -172,7 +172,7 @@ export default function ApprovalsPage() {
         setAssigningMultiple(true);
 
         try {
-            const res = await fetch("http://127.0.0.1:8000/employee/bulk-assign-role/", {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/employee/bulk-assign-role/`, {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",

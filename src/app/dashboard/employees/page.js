@@ -37,7 +37,7 @@ export default function EmployeesPage() {
         if (!token) return;
         const fetchEmployees = async () => {
             try {
-                const res = await axios.get("http://127.0.0.1:8000/employee/list/", {
+                const res = await axios.get(`${process.env.NEXT_PUBLIC_API_BASE_URL}/employee/list/`, {
                     headers: { Authorization: `Bearer ${token}` },
                 });
                 setEmployees(res.data.employees || []);
@@ -69,7 +69,7 @@ export default function EmployeesPage() {
             if (editingEmployee) {
                 // 🔹 Update
                 await axios.put(
-                    `http://127.0.0.1:8000/employee/update/${editingEmployee.emp_id}/`,
+                    `${process.env.NEXT_PUBLIC_API_BASE_URL}/employee/update/${editingEmployee.emp_id}/`,
                     {
                         email: formData.email,
                         emp_name: formData.emp_name,
@@ -83,7 +83,7 @@ export default function EmployeesPage() {
             } else {
                 // 🔹 Register new employee
                 await axios.post(
-                    "http://127.0.0.1:8000/employee/register/",
+                    `${process.env.NEXT_PUBLIC_API_BASE_URL}/employee/register/`,
                     {
                         email: formData.email,
                         emp_name: formData.emp_name,
@@ -98,7 +98,7 @@ export default function EmployeesPage() {
             }
 
             // Refresh employee list
-            const res = await axios.get("http://127.0.0.1:8000/employee/list/", {
+            const res = await axios.get(`${process.env.NEXT_PUBLIC_API_BASE_URL}/employee/list/`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             setEmployees(res.data.employees || []);
@@ -133,7 +133,7 @@ export default function EmployeesPage() {
         }
         
         try {
-            await axios.delete(`http://127.0.0.1:8000/employee/delete/${id}/`, {
+            await axios.delete(`${process.env.NEXT_PUBLIC_API_BASE_URL}/employee/delete/${id}/`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             setEmployees(employees.filter((e) => e.emp_id !== id));
