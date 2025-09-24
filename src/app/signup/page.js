@@ -121,7 +121,7 @@ export default function Signup() {
     const handleResendOtp = async () => {
         setResendLoading(true);
         try {
-            await axios.post(`${process.env.NEXT_PUBLIC_API_BASE_URL}employee/resend-otp/`, {
+            await axios.post(`${process.env.NEXT_PUBLIC_API_BASE_URL}/employee/resend-otp/`, {
                 email: formData.email,
             });
 
