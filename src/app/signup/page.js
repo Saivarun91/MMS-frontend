@@ -65,7 +65,7 @@ export default function Signup() {
 
         setIsLoading(true);
         try {
-            await axios.post("http://localhost:8000/employee/register/", {
+            await axios.post(`${process.env.NEXT_PUBLIC_API_BASE_URL}/employee/register/`, {
                 emp_name: formData.emp_name,
                 email: formData.email,
                 ph_number: formData.ph_number,
@@ -95,7 +95,7 @@ export default function Signup() {
         if (!otp) return;
         setOtpLoading(true);
         try {
-            await axios.post("http://localhost:8000/employee/verify_email_otp/", {
+            await axios.post(`${process.env.NEXT_PUBLIC_API_BASE_URL}employee/verify_email_otp/`, {
                 email: formData.email,
                 otp: otp,
             });
@@ -121,7 +121,7 @@ export default function Signup() {
     const handleResendOtp = async () => {
         setResendLoading(true);
         try {
-            await axios.post("http://localhost:8000/employee/resend-otp/", {
+            await axios.post(`${process.env.NEXT_PUBLIC_API_BASE_URL}employee/resend-otp/`, {
                 email: formData.email,
             });
 
