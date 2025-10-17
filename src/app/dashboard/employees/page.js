@@ -19,6 +19,7 @@ export default function EmployeesPage() {
     });
     const [searchTerm, setSearchTerm] = useState("");
     const [error, setError] = useState(null);
+    const [roles, setRoles] = useState([]);
 
     // ✅ Format date safely
     const formatDate = (dateString) => {
@@ -48,6 +49,26 @@ export default function EmployeesPage() {
         fetchEmployees();
     }, [token]);
 
+    // ✅ Fetch roles for dropdown
+    useEffect(() => {
+        if (!token) return;
+        const fetchRoles = async () => {
+            try {
+                const res = await axios.get(`${process.env.NEXT_PUBLIC_API_BASE_URL}/userroles/roles/`, {
+                    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                });
+                const payload = res.data;
+                const normalized = Array.isArray(payload) ? payload : (payload?.roles || []);
+                setRoles(normalized);
+            } catch (err) {
+                console.error("Error fetching roles:", err.response?.data || err.message);
+                setRoles([]);
+            }
+        };
+        fetchRoles();
+    }, [token]);
+    console.log("roles",roles);
+
     // ✅ Add or update employee
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -73,7 +94,7 @@ export default function EmployeesPage() {
                     {
                         email: formData.email,
                         emp_name: formData.emp_name,
-                        role: formData.role,
+                        role: formData.role, // role name
                         company_name: formData.company_name,
                         password: formData.password || undefined,
                     },
@@ -87,7 +108,7 @@ export default function EmployeesPage() {
                     {
                         email: formData.email,
                         emp_name: formData.emp_name,
-                        role: formData.role,
+                        role: formData.role, // role name
                         company_name: formData.company_name,
                         password: formData.password,
                     },
@@ -345,13 +366,16 @@ export default function EmployeesPage() {
                                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                                 required
                             />
-                            <input
-                                type="text"
-                                placeholder="Role"
+                            <select
                                 className="w-full px-3 py-2 border rounded-lg"
                                 value={formData.role}
                                 onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                            />
+                            >
+                                <option value="">Select Role</option>
+                                {Array.isArray(roles) && roles.map((r) => (
+                                    <option key={(r.id ?? r.role_name)} value={r.role_name}>{r.role_name}</option>
+                                ))}
+                            </select>
                             <input
                                 type="text"
                                 placeholder="Company"

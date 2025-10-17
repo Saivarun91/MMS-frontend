@@ -1,7 +1,7 @@
 "use client";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-  import { fetchRequests, fetchChatMessages, addChatMessage,updateRequest  } from "@/lib/api";
+  import { fetchRequests, fetchChatMessages, addChatMessage,updateRequest, assignSapItem  } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 
 export default function RequestDetailPage() {
@@ -13,6 +13,7 @@ export default function RequestDetailPage() {
   const [loading, setLoading] = useState(true);
   const [chatMessages, setChatMessages] = useState([]);
   const [message, setMessage] = useState("");
+  const [sapId, setSapId] = useState("");
   const searchParams = useSearchParams();
   const mode = searchParams.get("mode"); // ?mode=edit if Edit clicked in list\
   // console.log("mode : ", mode)
@@ -26,6 +27,7 @@ const [error, setError] = useState(null);
     priority: "High",
     status: "Open",
   });
+  const canClose = user?.role === 'MDGT' ? Boolean(request?.sap_item) : true;
 
   
   useEffect(() => {
@@ -162,6 +164,21 @@ const [error, setError] = useState(null);
       console.error("Error sending chat:", err);
     }
   };
+
+  const handleAssignSap = async () => {
+    if (!sapId.trim()) return;
+    try {
+      await assignSapItem(token, id, sapId.trim());
+      window.dispatchEvent(new CustomEvent('showToast', { detail: { type: 'success', message: `SAP Item ${sapId} assigned` } }));
+      setSapId("");
+      // refresh request header to reflect SAP item/status if needed
+      const data = await fetchRequests(token);
+      const updated = data.find((r) => r.request_id == id);
+      setRequest(updated);
+    } catch (err) {
+      window.dispatchEvent(new CustomEvent('showToast', { detail: { type: 'error', message: err.response?.data?.error || 'Failed to assign SAP' } }));
+    }
+  };
   console.log("chatMessages : ", chatMessages)
   const getPriorityClasses = (priority) => {
     switch (priority) {
@@ -289,6 +306,24 @@ const [error, setError] = useState(null);
                   </p>
                 </div> */}
               {/* </div> */}
+              {/* MDGT: Assign SAP Item */}
+              {user?.role === 'MDGT' && (
+                <div className="mt-4 flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={sapId}
+                    onChange={(e) => setSapId(e.target.value)}
+                    placeholder="Enter SAP Item ID"
+                    className="border rounded-lg p-2"
+                  />
+                  <button
+                    onClick={handleAssignSap}
+                    className="bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700"
+                  >
+                    Assign SAP
+                  </button>
+                </div>
+              )}
               {error && (
   <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
     <p className="text-red-600 text-sm">{error}</p>
@@ -297,32 +332,42 @@ const [error, setError] = useState(null);
               {/* Description */}
               <div className="border-t border-gray-200 pt-6">
                 <h2 className="font-semibold text-gray-700 mb-3">Description</h2>
-                {isEditing ? (
-  <div className="space-y-4">
-    <textarea
-      value={editedRequest.description}
-      onChange={(e) =>
-        setEditedRequest({ ...editedRequest, description: e.target.value })
-      }
-      className="w-full border rounded-lg p-2"
-    />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    {isEditing ? (
+                      <div className="space-y-4">
+                        <textarea
+                          value={editedRequest.description}
+                          onChange={(e) =>
+                            setEditedRequest({ ...editedRequest, description: e.target.value })
+                          }
+                          className="w-full border rounded-lg p-2"
+                        />
 
+                        <button
+                          onClick={handleSave}
+                          disabled={saving}
+                          className="bg-blue-600 text-white px-4 py-2 rounded-lg disabled:opacity-50 flex items-center"
+                        >
+                          {saving ? "Saving..." : "Save Changes"}
+                        </button>
+                      </div>
+                    ) : (
+                      <p className="text-gray-600">
+                        {request.notes ||
+                          "Lorem ipsum dolor sit amet, consectetur adipiscing elit..."}
+                      </p>
+                    )}
+                  </div>
 
-    <button
-  onClick={handleSave}
-  disabled={saving}
-  className="bg-blue-600 text-white px-4 py-2 rounded-lg disabled:opacity-50 flex items-center"
->
-  {saving ? "Saving..." : "Save Changes"}
-</button>
-  </div>
-) : (
-  <p className="text-gray-600">
-    {request.notes ||
-      "Lorem ipsum dolor sit amet, consectetur adipiscing elit..."}
-  </p>
-)}
-</div>
+                  {user?.role !== 'MDGT' && (
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <p className="text-xs text-gray-500 uppercase font-medium mb-1">SAP Item</p>
+                      <p className="font-medium text-gray-800">{request.sap_item || "-"}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
 
             {/* Conversation */}
@@ -465,7 +510,8 @@ const [error, setError] = useState(null);
       <div className="flex gap-2">
         <button
           onClick={handleSave}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+          disabled={user?.role === 'MDGT' && editedRequest.status === 'Closed' && !request?.sap_item}
         >
           Save
         </button>
@@ -486,6 +532,10 @@ const [error, setError] = useState(null);
       <p>
         <span className="font-medium">Status:</span>{" "}
         {request.status || "Open"}
+      </p>
+      <p>
+        <span className="font-medium">SAP Item:</span>{" "}
+        {request.sap_item || "-"}
       </p>
     </div>
   )}
