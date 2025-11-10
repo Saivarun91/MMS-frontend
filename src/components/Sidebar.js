@@ -22,18 +22,11 @@ export default function Sidebar() {
     const navItems = [
       { name: "Home", href: "/app", icon: Home,keywords: ["home"] },
       { name: "Search", href: "/search", icon: Search,keywords: ["search"] },
-      ...(role === "Employee" || role === "MDGT"
-        ? [{ name: "Requests", href: "/requests", icon: FilePlus,keywords: ["request"] }]
-        : []),
-      ...(role === "Employee"
-        ? [{ name: "Materials", href: "/materials", icon: Package,keywords: ["materials"] }]
-        : []),
-      ...(role === "MDGT"
-        ? [{ name: "Governance", href: "/governance", icon: ShieldCheck,keywords: ["governance"] }]
-        : []),
-      ...(role === "Admin"
-        ? [{ name: "Admin Panel", href: "/dashboard/employees", icon: Home,keywords: ["dashboard"] }]
-        : []),
+      { name: "Requests", href: "/requests", icon: FilePlus,keywords: ["request"] },
+      { name: "Materials", href: "/materials", icon: Package,keywords: ["materials"] },
+      { name: "Governance", href: "/governance", icon: ShieldCheck,keywords: ["governance"] },
+      { name: "Admin Panel", href: "/dashboard/employees", icon: Home,keywords: ["dashboard"] }
+    
     ];
 
     // 🔑 Filter items based on permissions + CRUD flags

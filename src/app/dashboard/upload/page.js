@@ -10,7 +10,7 @@ export default function UploadPage() {
     const [uploadProgress, setUploadProgress] = useState(0);
     const fileInputRef = useRef(null);
 
-    const templates = ["Requests", "Employees", "Material Groups"];
+    const templates = ["project", "EmailDomain", "Employee", "MaterialType", "MatgAttribute", "Material", "ValidationLists", "SuperGroup", "MatGroup", "MaterialType", "ItemMaster", "Company"];
 
     const triggerToast = (type, message) => {
         window.dispatchEvent(new CustomEvent('showToast', {
@@ -36,38 +36,54 @@ export default function UploadPage() {
         document.body.removeChild(link);
     };
 
-    const handleFileUpload = (event) => {
+    const handleFileUpload = async (event) => {
         const file = event.target.files[0];
         if (!file) return;
 
-        // Validate file type
-        const validTypes = ['.xlsx', '.csv'];
-        const fileExtension = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+        const validTypes = [".xlsx", ".csv"];
+        const fileExtension = file.name.substring(file.name.lastIndexOf(".")).toLowerCase();
 
         if (!validTypes.includes(fileExtension)) {
             triggerToast("error", "Please upload only Excel or CSV files");
             return;
         }
 
-        // Simulate upload process
+        if (!selectedTemplate) {
+            triggerToast("error", "Please select a template first!");
+            return;
+        }
+
         setIsUploading(true);
-        setUploadProgress(0);
+        setUploadProgress(10);
 
-        const uploadInterval = setInterval(() => {
-            setUploadProgress(prev => {
-                if (prev >= 100) {
-                    clearInterval(uploadInterval);
-                    setIsUploading(false);
-                    triggerToast("success", `${file.name} uploaded successfully!`);
-                    if (fileInputRef.current) fileInputRef.current.value = '';
-                    return 100;
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("model", selectedTemplate);
+
+        try {
+            const response = await fetch(
+                `${process.env.NEXT_PUBLIC_API_BASE_URL}/uploads/bulk-upload/?model=${selectedTemplate}`, // 👈 update path as needed
+                {
+                    method: "POST",
+                    body: formData,
                 }
-                return prev + 10;
-            });
-        }, 200);
+            );
 
-        console.log("File uploaded:", file.name);
-        // TODO: Replace with actual API call
+            const result = await response.json();
+            console.log("Result : ", result);
+            if (!response.ok) {
+                throw new Error(result.error || "Upload failed");
+            }
+
+            setUploadProgress(100);
+            triggerToast("success", result.message || `${file.name} uploaded successfully!`);
+        } catch (error) {
+            console.error("Upload error:", error);
+            triggerToast("error", error.message);
+        } finally {
+            setIsUploading(false);
+            if (fileInputRef.current) fileInputRef.current.value = "";
+        }
     };
 
     const handleDrop = (e) => {

@@ -153,7 +153,7 @@ export const updateEmailDomain = (token, pk, data) => {
 
 export const deleteEmailDomain = (token, pk) => {
     const axiosInstance = createAxiosInstance(token);
-    return axiosInstance.delete(`emaildomains/delete/${pk}/`).then(res => res.data);
+    return axiosInstance.delete(`emaildomains/${pk}/delete/`).then(res => res.data);
 };
 
 // Companies API

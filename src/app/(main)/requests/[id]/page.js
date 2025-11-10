@@ -1,7 +1,7 @@
 "use client";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-  import { fetchRequests, fetchChatMessages, addChatMessage,updateRequest, assignSapItem  } from "@/lib/api";
+import { fetchRequests, fetchChatMessages, addChatMessage, updateRequest, assignSapItem } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 
 export default function RequestDetailPage() {
@@ -18,7 +18,7 @@ export default function RequestDetailPage() {
   const mode = searchParams.get("mode"); // ?mode=edit if Edit clicked in list\
   // console.log("mode : ", mode)
   const [saving, setSaving] = useState(false);
-const [error, setError] = useState(null);
+  const [error, setError] = useState(null);
 
 
   const [isEditing, setIsEditing] = useState(false);
@@ -29,7 +29,7 @@ const [error, setError] = useState(null);
   });
   const canClose = user?.role === 'MDGT' ? Boolean(request?.sap_item) : true;
 
-  
+
   useEffect(() => {
     const loadChat = async () => {
       if (token && id) {
@@ -96,12 +96,12 @@ const [error, setError] = useState(null);
 
     // Optional: keep connection alive
     const pingInterval = setInterval(() => {
-      try { socket?.readyState === 1 && socket.send(JSON.stringify({ type: "ping" })); } catch (e) {}
+      try { socket?.readyState === 1 && socket.send(JSON.stringify({ type: "ping" })); } catch (e) { }
     }, 25000);
 
     return () => {
       clearInterval(pingInterval);
-      try { socket && socket.close(); } catch (e) {}
+      try { socket && socket.close(); } catch (e) { }
     };
   }, [id]);
 
@@ -129,31 +129,31 @@ const [error, setError] = useState(null);
     try {
       setSaving(true);
       setError(null);
-  
+
       await updateRequest(token, id, {
         notes: editedRequest.description,
         request_status: editedRequest.priority,  // ✅ map Priority → request_status
         status: editedRequest.status,            // ✅ map Status → status
       });
-  
+
       // Refresh request
       const data = await fetchRequests(token);
       const updated = data.find((r) => r.request_id == id);
       setRequest(updated);
-  
+
       setIsEditing(false);
     } catch (err) {
       setError(
         "Failed to update request: " +
-          (err.response?.data?.error || err.message)
+        (err.response?.data?.error || err.message)
       );
       console.error("Error updating request:", err);
     } finally {
       setSaving(false);
     }
   };
-  
-  
+
+
   const handleSend = async () => {
     if (!message.trim()) return;
     try {
@@ -204,8 +204,8 @@ const [error, setError] = useState(null);
         return "bg-gray-100 text-gray-700";
     }
   };
-  
-  
+
+
   useEffect(() => {
     const load = async () => {
       try {
@@ -259,33 +259,33 @@ const [error, setError] = useState(null);
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
-                <span
-  className={`px-3 py-1 text-xs rounded-full font-medium ${getPriorityClasses(
-    request.request_status || "High"
-  )}`}
->
-  {request.request_status || "High"} Priority
-</span>
+                  <span
+                    className={`px-3 py-1 text-xs rounded-full font-medium ${getPriorityClasses(
+                      request.request_status || "High"
+                    )}`}
+                  >
+                    {request.request_status || "High"} Priority
+                  </span>
 
-<span
-  className={`px-3 py-1 text-xs rounded-full font-medium ${getStatusClasses(
-    request.status || "Open"
-  )}`}
->
-  {request.status || "Open"}
-</span>
+                  <span
+                    className={`px-3 py-1 text-xs rounded-full font-medium ${getStatusClasses(
+                      request.status || "Open"
+                    )}`}
+                  >
+                    {request.status || "Open"}
+                  </span>
 
-                  <button className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100">
+                  {/* <button className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                       <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
                     </svg>
-                  </button>
+                  </button> */}
                 </div>
               </div>
-              
+
               {/* Combined Info Grid */}
               {/* <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6"> */}
-                {/* <div className="bg-gray-50 rounded-lg p-4">
+              {/* <div className="bg-gray-50 rounded-lg p-4">
                   <p className="text-xs text-gray-500 uppercase font-medium mb-1">Requester</p>
                   <p className="font-medium text-gray-800">{request.created_by || "AK San"}</p>
                 </div>
@@ -299,7 +299,7 @@ const [error, setError] = useState(null);
                     {request.created ? new Date(request.created).toLocaleDateString('en-GB') : "18/12/2024"}
                   </p>
                 </div> */}
-                {/* <div className="bg-gray-50 rounded-lg p-4">
+              {/* <div className="bg-gray-50 rounded-lg p-4">
                   <p className="text-xs text-gray-500 uppercase font-medium mb-1">Last Updated</p>
                   <p className="font-medium text-gray-800">
                     {request.updated ? new Date(request.updated).toLocaleDateString('en-GB') : "19/12/2024"}
@@ -325,10 +325,10 @@ const [error, setError] = useState(null);
                 </div>
               )}
               {error && (
-  <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
-    <p className="text-red-600 text-sm">{error}</p>
-  </div>
-)}
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+                  <p className="text-red-600 text-sm">{error}</p>
+                </div>
+              )}
               {/* Description */}
               <div className="border-t border-gray-200 pt-6">
                 <h2 className="font-semibold text-gray-700 mb-3">Description</h2>
@@ -374,45 +374,44 @@ const [error, setError] = useState(null);
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <h2 className="font-semibold text-gray-700 mb-4">Conversation</h2>
               <div className="space-y-4 mb-6">
-              {chatMessages.map((chat, index) => {
-    const isCurrentUser = chat.sender === user?.emp_name;
+                {chatMessages.map((chat, index) => {
+                  const isCurrentUser = chat.sender === user?.emp_name;
 
-  return (
-    <div
-      key={index}
-      className={`flex flex-col ${isCurrentUser ? "items-end" : "items-start"}`}
-    >
-      <div
-        className={`p-4 rounded-lg max-w-md ${
-          isCurrentUser ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"
-        }`}
-      >
-        <div className="flex justify-between items-start mb-1">
-          <span className="font-medium text-sm">
-            {isCurrentUser ? "You" : chat.sender}
-          </span>
-        </div>
-        <p className="text-sm">{chat.message}</p>
-      </div>
-      <span className="text-xs text-gray-500 mt-1">
-        {new Date(chat.timestamp).toLocaleString()}
-      </span>
-    </div>
-  );
-})}
+                  return (
+                    <div
+                      key={index}
+                      className={`flex flex-col ${isCurrentUser ? "items-end" : "items-start"}`}
+                    >
+                      <div
+                        className={`p-4 rounded-lg max-w-md ${isCurrentUser ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"
+                          }`}
+                      >
+                        <div className="flex justify-between items-start mb-1">
+                          <span className="font-medium text-sm">
+                            {isCurrentUser ? "You" : chat.sender}
+                          </span>
+                        </div>
+                        <p className="text-sm">{chat.message}</p>
+                      </div>
+                      <span className="text-xs text-gray-500 mt-1">
+                        {new Date(chat.timestamp).toLocaleString()}
+                      </span>
+                    </div>
+                  );
+                })}
 
-</div>
+              </div>
 
               <div className="flex space-x-2">
-              <input
-  type="text"
-  placeholder="Type a message..."
-  value={message}
-  onChange={(e) => setMessage(e.target.value)}
-  disabled={isEditing}   // 👈 disable while editing
-  className="flex-1 border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none
+                <input
+                  type="text"
+                  placeholder="Type a message..."
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  disabled={isEditing}   // 👈 disable while editing
+                  className="flex-1 border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none
     focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
-/>
+                />
                 <button
                   onClick={handleSend}
                   className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center"
@@ -431,115 +430,115 @@ const [error, setError] = useState(null);
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 sticky top-6">
               <h2 className="font-semibold text-gray-700 mb-4 pb-2 border-b">Request History</h2>
               <div className="space-y-4 text-sm text-gray-600 mb-6">
-  <div className="flex items-start">
-    <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mr-3">
-      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-green-600" viewBox="0 0 20 20" fill="currentColor">
-        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-      </svg>
-    </div>
-    <div>
-      <p className="font-medium text-gray-700">Created</p>
-      <p>
-        By {request.created_by || "Unknown"} on{" "}
-        {request.created ? new Date(request.created).toLocaleDateString("en-GB") : "-"}
-      </p>
-    </div>
-  </div>
+                <div className="flex items-start">
+                  <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mr-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-green-600" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-700">Created</p>
+                    <p>
+                      By {request.created_by || "Unknown"} on{" "}
+                      {request.created ? new Date(request.created).toLocaleDateString("en-GB") : "-"}
+                    </p>
+                  </div>
+                </div>
 
-  <div className="flex items-start">
-    <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 mr-3">
-      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-blue-600" viewBox="0 0 20 20" fill="currentColor">
-        <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-      </svg>
-    </div>
-    <div>
-      <p className="font-medium text-gray-700">Assigned</p>
-      <p>
-        To {request.assigned_to || "Unassigned"} on{" "}
-        {request.assigned_date ? new Date(request.assigned_date).toLocaleDateString("en-GB") : "-"}
-      </p>
-    </div>
-  </div>
+                <div className="flex items-start">
+                  <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 mr-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-blue-600" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-700">Assigned</p>
+                    <p>
+                      To {request.assigned_to || "Unassigned"} on{" "}
+                      {request.assigned_date ? new Date(request.assigned_date).toLocaleDateString("en-GB") : "-"}
+                    </p>
+                  </div>
+                </div>
 
-  <div className="flex items-start">
-    <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0 mr-3">
-      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-purple-600" viewBox="0 0 20 20" fill="currentColor">
-        <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-      </svg>
-    </div>
-    <div>
-      <p className="font-medium text-gray-700">Updated</p>
-      <p>
-        By {request.updated_by || "System"} on{" "}
-        {request.updated ? new Date(request.updated).toLocaleDateString("en-GB") : "-"}
-      </p>
-    </div>
-  </div>
-</div>
+                <div className="flex items-start">
+                  <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0 mr-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-purple-600" viewBox="0 0 20 20" fill="currentColor">
+                      <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-700">Updated</p>
+                    <p>
+                      By {request.updated_by || "System"} on{" "}
+                      {request.updated ? new Date(request.updated).toLocaleDateString("en-GB") : "-"}
+                    </p>
+                  </div>
+                </div>
+              </div>
 
-<div className="space-y-4 mt-6">
-  {isEditing ? (
-    <div className="flex flex-col gap-4">
-      <div className="flex gap-4">
-        <select
-          value={editedRequest.priority}
-          onChange={(e) =>
-            setEditedRequest({ ...editedRequest, priority: e.target.value })
-          }
-          className="border rounded-lg p-2"
-        >
-          <option value="High">High</option>
-          <option value="Medium">Medium</option>
-          <option value="Low">Low</option>
-        </select>
+              <div className="space-y-4 mt-6">
+                {isEditing ? (
+                  <div className="flex flex-col gap-4">
+                    <div className="flex gap-4">
+                      <select
+                        value={editedRequest.priority}
+                        onChange={(e) =>
+                          setEditedRequest({ ...editedRequest, priority: e.target.value })
+                        }
+                        className="border rounded-lg p-2"
+                      >
+                        <option value="High">High</option>
+                        <option value="Medium">Medium</option>
+                        <option value="Low">Low</option>
+                      </select>
 
-        <select
-          value={editedRequest.status}
-          onChange={(e) =>
-            setEditedRequest({ ...editedRequest, status: e.target.value })
-          }
-          className="border rounded-lg p-2"
-        >
-          <option value="Open">Open</option>
-          <option value="Closed">Closed</option>
-          <option value="Rejected">Rejected</option>
-        </select>
-      </div>
+                      <select
+                        value={editedRequest.status}
+                        onChange={(e) =>
+                          setEditedRequest({ ...editedRequest, status: e.target.value })
+                        }
+                        className="border rounded-lg p-2"
+                      >
+                        <option value="Open">Open</option>
+                        <option value="Closed">Closed</option>
+                        <option value="Rejected">Rejected</option>
+                      </select>
+                    </div>
 
-      {/* Save / Cancel */}
-      <div className="flex gap-2">
-        <button
-          onClick={handleSave}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
-          disabled={user?.role === 'MDGT' && editedRequest.status === 'Closed' && !request?.sap_item}
-        >
-          Save
-        </button>
-        <button
-          onClick={() => setIsEditing(false)}
-          className="border px-4 py-2 rounded-lg hover:bg-gray-100"
-        >
-          Cancel
-        </button>
-      </div>
-    </div>
-  ) : (
-    <div>
-      <p>
-        <span className="font-medium">Priority:</span>{" "}
-        {request.request_status || "High"}
-      </p>
-      <p>
-        <span className="font-medium">Status:</span>{" "}
-        {request.status || "Open"}
-      </p>
-      <p>
-        <span className="font-medium">SAP Item:</span>{" "}
-        {request.sap_item || "-"}
-      </p>
-    </div>
-  )}
-</div>
+                    {/* Save / Cancel */}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleSave}
+                        className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                        disabled={user?.role === 'MDGT' && editedRequest.status === 'Closed' && !request?.sap_item}
+                      >
+                        Save
+                      </button>
+                      <button
+                        onClick={() => setIsEditing(false)}
+                        className="border px-4 py-2 rounded-lg hover:bg-gray-100"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <p>
+                      <span className="font-medium">Priority:</span>{" "}
+                      {request.request_status || "High"}
+                    </p>
+                    <p>
+                      <span className="font-medium">Status:</span>{" "}
+                      {request.status || "Open"}
+                    </p>
+                    <p>
+                      <span className="font-medium">SAP Item:</span>{" "}
+                      {request.sap_item || "-"}
+                    </p>
+                  </div>
+                )}
+              </div>
 
 
             </div>

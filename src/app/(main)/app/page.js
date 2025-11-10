@@ -138,37 +138,37 @@ export default function Home() {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 relative overflow-hidden">
       {/* Watermark Background */}
       <div className="fixed inset-0 pointer-events-none opacity-5 z-0">
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 rotate-12">
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 rotate-[345deg]">
           <img
             src="https://meil.in/sites/default/files/meil_logo_old_update_24.png"
             alt="MEIL Logo Watermark"
             className="w-96 h-48 object-contain filter grayscale"
           />
         </div>
-        
+
         {/* Additional watermarks in corners */}
-        <div className="absolute top-10 left-10 text-[#002147] text-center opacity-3 rotate-6">
+        <div className="absolute top-10 left-10 text-[#002147] text-center opacity-3 rotate-[345deg]">
           <img
             src="https://meil.in/sites/default/files/meil_logo_old_update_24.png"
             alt="MEIL Logo"
             className="w-16 h-8 object-contain filter grayscale"
           />
         </div>
-        <div className="absolute top-10 right-10 text-[#002147] text-center opacity-3 -rotate-6">
+        <div className="absolute top-10 right-10 text-[#002147] text-center opacity-3 rotate-[345deg]">
           <img
             src="https://meil.in/sites/default/files/meil_logo_old_update_24.png"
             alt="MEIL Logo"
             className="w-16 h-8 object-contain filter grayscale"
           />
         </div>
-        <div className="absolute bottom-10 left-10 text-[#002147] text-center opacity-3 -rotate-6">
+        <div className="absolute bottom-10 left-10 text-[#002147] text-center opacity-3 rotate-[345deg]">
           <img
             src="https://meil.in/sites/default/files/meil_logo_old_update_24.png"
             alt="MEIL Logo"
             className="w-16 h-8 object-contain filter grayscale"
           />
         </div>
-        <div className="absolute bottom-10 right-10 text-[#002147] text-center opacity-3 rotate-6">
+        <div className="absolute bottom-10 right-10 text-[#002147] text-center opacity-3 rotate-[345deg]">
           <img
             src="https://meil.in/sites/default/files/meil_logo_old_update_24.png"
             alt="MEIL Logo"
@@ -176,6 +176,49 @@ export default function Home() {
           />
         </div>
       </div>
+      {/* Watermark Background */}
+      {/* <div className="fixed inset-0 pointer-events-none opacity-5 z-0"> */}
+      {/* Center watermark */}
+      {/* <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+    <img
+      src="https://meil.in/sites/default/files/meil_logo_old_update_24.png"
+      alt="MEIL Logo Watermark"
+      className="w-96 h-48 object-contain filter grayscale"
+    />
+  </div> */}
+
+      {/* Additional watermarks in corners */}
+      {/* <div className="absolute top-10 left-10 text-[#002147] text-center opacity-3">
+    <img
+      src="https://meil.in/sites/default/files/meil_logo_old_update_24.png"
+      alt="MEIL Logo"
+      className="w-16 h-8 object-contain filter grayscale"
+    />
+  </div>
+  <div className="absolute top-10 right-10 text-[#002147] text-center opacity-3">
+    <img
+      src="https://meil.in/sites/default/files/meil_logo_old_update_24.png"
+      alt="MEIL Logo"
+      className="w-16 h-8 object-contain filter grayscale"
+    />
+  </div>
+  <div className="absolute bottom-10 left-10 text-[#002147] text-center opacity-3">
+    <img
+      src="https://meil.in/sites/default/files/meil_logo_old_update_24.png"
+      alt="MEIL Logo"
+      className="w-16 h-8 object-contain filter grayscale"
+    />
+  </div>
+  <div className="absolute bottom-10 right-10 text-[#002147] text-center opacity-3">
+    <img
+      src="https://meil.in/sites/default/files/meil_logo_old_update_24.png"
+      alt="MEIL Logo"
+      className="w-16 h-8 object-contain filter grayscale"
+    />
+  </div>
+</div> */}
+
+
 
       {/* Header */}
       {/* <div className="bg-white border-b border-gray-200 py-4 px-6 shadow-sm relative z-10">
