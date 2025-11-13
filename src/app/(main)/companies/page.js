@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import {
-  Plus, Edit, Trash2, Search, Building, Info, Loader2
+  Plus, Edit, Trash2, Search, Building, Info, Loader2, Eye
 } from "lucide-react";
 import { 
   fetchCompanies, 
@@ -10,11 +10,14 @@ import {
   deleteCompany 
 } from "@/lib/api";
 import {useAuth} from "@/context/AuthContext";
+import ViewModal from "@/components/ViewModal";
 
 export default function CompaniesPage() {
   const [companies, setCompanies] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [viewingCompany, setViewingCompany] = useState(null);
   const [editingCompany, setEditingCompany] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -66,6 +69,11 @@ export default function CompaniesPage() {
     });
     setIsModalOpen(true);
     setError(null);
+  };
+
+  const handleView = (company) => {
+    setViewingCompany(company);
+    setIsViewModalOpen(true);
   };
 
   const handleEdit = (company) => {
@@ -222,15 +230,22 @@ export default function CompaniesPage() {
                         <td className="px-6 py-4 text-sm text-gray-900">
                           <div className="flex space-x-2">
                             <button
+                              onClick={() => handleView(company)}
+                              className="text-green-600 hover:text-green-800 p-2 rounded-full hover:bg-green-50 transition duration-200"
+                              title="View"
+                            >
+                              <Eye size={16} />
+                            </button>
+                            <button
                               onClick={() => handleEdit(company)}
-                              className="text-blue-600 hover:text-blue-800"
+                              className="text-blue-600 hover:text-blue-800 p-2 rounded-full hover:bg-blue-50 transition duration-200"
                               title="Edit"
                             >
                               <Edit size={16} />
                             </button>
                             <button
                               onClick={() => handleDelete(company.company_name)}
-                              className="text-red-600 hover:text-red-800"
+                              className="text-red-600 hover:text-red-800 p-2 rounded-full hover:bg-red-50 transition duration-200"
                               title="Delete"
                             >
                               <Trash2 size={16} />
@@ -328,6 +343,22 @@ export default function CompaniesPage() {
           </div>
         </div>
       )}
+
+      {/* View Modal */}
+      <ViewModal
+        isOpen={isViewModalOpen}
+        onClose={() => {
+          setIsViewModalOpen(false);
+          setViewingCompany(null);
+        }}
+        data={viewingCompany}
+        title="View Company Details"
+        fieldLabels={{
+          company_name: "Company Name",
+          created: "Created",
+          updated: "Updated"
+        }}
+      />
     </div>
   );
 }

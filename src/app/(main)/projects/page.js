@@ -1,13 +1,14 @@
 'use client';
 import React, { useState, useEffect } from "react";
-import { Plus, Edit, Trash2, Search, Folder, Info, Loader2 } from "lucide-react";
+import { Plus, Edit, Trash2, Search, Folder, Info, Loader2, Eye } from "lucide-react";
 import { 
   fetchProjects, 
   createProject, 
   updateProject, 
   deleteProject 
 } from "@/lib/api";
-import {useAuth} from "@/context/AuthContext";  
+import {useAuth} from "@/context/AuthContext";
+import ViewModal from "@/components/ViewModal";  
 
 export default function ProjectsPage() {
     const [projects, setProjects] = useState([]);
@@ -17,6 +18,8 @@ export default function ProjectsPage() {
     });
     const [editProject, setEditProject] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+    const [viewingProject, setViewingProject] = useState(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [isEditing, setIsEditing] = useState(false);
     const [loading, setLoading] = useState(true);
@@ -142,6 +145,12 @@ export default function ProjectsPage() {
         }
     };
 
+    // ✅ Open View Modal
+    const openViewModal = (project) => {
+        setViewingProject(project);
+        setIsViewModalOpen(true);
+    };
+
     // ✅ Open Edit Modal
     const openEditModal = (project) => {
         setEditProject(project);
@@ -253,6 +262,13 @@ export default function ProjectsPage() {
               <td className="px-6 py-4 text-sm text-gray-700">{proj.updatedby || "N/A"}</td>
               <td className="px-6 py-4 text-sm text-gray-700">
                 <div className="flex space-x-2">
+                  <button
+                    onClick={() => openViewModal(proj)}
+                    className="text-green-600 hover:text-green-800 p-2 rounded-full hover:bg-green-50 transition duration-200"
+                    title="View"
+                  >
+                    <Eye size={16} />
+                  </button>
                   {checkPermission("project", "update") && (
                     <button
                       onClick={() => openEditModal(proj)}
@@ -395,6 +411,26 @@ export default function ProjectsPage() {
                     </div>
                 </div>
             )}
+
+            {/* View Modal */}
+            <ViewModal
+                isOpen={isViewModalOpen}
+                onClose={() => {
+                    setIsViewModalOpen(false);
+                    setViewingProject(null);
+                }}
+                data={viewingProject}
+                title="View Project Details"
+                fieldLabels={{
+                    id: "ID",
+                    project_code: "Project Code",
+                    project_name: "Project Name",
+                    created: "Created",
+                    createdby: "Created By",
+                    updated: "Updated",
+                    updatedby: "Updated By"
+                }}
+            />
         </div>
     );
 }

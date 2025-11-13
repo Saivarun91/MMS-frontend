@@ -2,14 +2,19 @@
 "use client";
 import { useState, useEffect } from "react";
 import {
-  Plus, Edit, Trash2, Search, Package, Info, Loader2
+  Plus, Edit, Trash2, Search, Package, Info, Loader2, Eye
 } from "lucide-react";
-import { fetchItemMasters, createItemMaster, updateItemMaster, deleteItemMaster } from "../../../lib/api";
+import { fetchItemMasters, createItemMaster, updateItemMaster, deleteItemMaster, fetchMaterialGroups, fetchMaterialTypes, fetchMaterialAttributes } from "../../../lib/api";
 import {useAuth} from "@/context/AuthContext";
 import BackButton from "@/components/BackButton";
+import SearchableDropdown from "@/components/SearchableDropdown";
+import ViewModal from "@/components/ViewModal";
 
 export default function MaterialsPage() {
   const [materials, setMaterials] = useState([]);
+  const [materialGroups, setMaterialGroups] = useState([]);
+  const [materialTypes, setMaterialTypes] = useState([]);
+  const [materialAttributes, setMaterialAttributes] = useState({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
@@ -17,7 +22,10 @@ export default function MaterialsPage() {
   const [filterGroup, setFilterGroup] = useState("all");
   const [filterType, setFilterType] = useState("all");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [viewingMaterial, setViewingMaterial] = useState(null);
   const [editingMaterial, setEditingMaterial] = useState(null);
+  
   const [formData, setFormData] = useState({
     sap_item_id: "",
     mat_type_code: "",
@@ -25,24 +33,62 @@ export default function MaterialsPage() {
     item_desc: "",
     notes: "",
     search_text: "",
+    attributes: {},
   });
   const {user,token,role,checkPermission} = useAuth();
   // Load materials on component mount
   useEffect(() => {
-    loadMaterials();
+    if (token) {
+      loadMaterials();
+      loadMaterialGroups();
+      loadMaterialTypes();
+    }
   }, [token]);
+
 
   const loadMaterials = async () => {
     try {
       setLoading(true);
       setError(null);
-      // const token = localStorage.getItem("token");
       const data = await fetchItemMasters(token);
       setMaterials(data);
     } catch (err) {
       setError("Failed to load materials: " + (err.response?.data?.error || err.message));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadMaterialGroups = async () => {
+    try {
+      const data = await fetchMaterialGroups(token);
+      setMaterialGroups(data || []);
+    } catch (err) {
+      console.error("Error loading material groups:", err);
+    }
+  };
+
+  const loadMaterialTypes = async () => {
+    try {
+      const data = await fetchMaterialTypes(token);
+      setMaterialTypes(data || []);
+    } catch (err) {
+      console.error("Error loading material types:", err);
+    }
+  };
+
+  const loadMaterialAttributes = async (mgrpCode) => {
+    try {
+      const data = await fetchMaterialAttributes(token);
+      const attrForGroup = data.find(attr => attr.mgrp_code === mgrpCode);
+      if (attrForGroup) {
+        setMaterialAttributes(attrForGroup.attributes || {});
+      } else {
+        setMaterialAttributes({});
+      }
+    } catch (err) {
+      console.error("Error loading material attributes:", err);
+      setMaterialAttributes({});
     }
   };
 
@@ -77,9 +123,16 @@ export default function MaterialsPage() {
       item_desc: "",
       notes: "",
       search_text: "",
+      attributes: {},
     });
+    setMaterialAttributes({});
     setError(null);
     setIsModalOpen(true);
+  };
+
+  const handleView = (material) => {
+    setViewingMaterial(material);
+    setIsViewModalOpen(true);
   };
 
   const handleEdit = (material) => {
@@ -91,7 +144,11 @@ export default function MaterialsPage() {
       item_desc: material.item_desc || "",
       notes: material.notes || "",
       search_text: material.search_text || "",
+      attributes: material.attributes || {},
     });
+    if (material.mgrp_code) {
+      loadMaterialAttributes(material.mgrp_code);
+    }
     setError(null);
     setIsModalOpen(true);
   };
@@ -108,6 +165,23 @@ export default function MaterialsPage() {
       ...prev,
       [name]: value
     }));
+  };
+
+  const handleAttributeChange = (attrName, attrValue) => {
+    setFormData(prev => ({
+      ...prev,
+      attributes: {
+        ...prev.attributes,
+        [attrName]: attrValue
+      }
+    }));
+  };
+
+  const handleMgrpCodeChange = async (mgrpCode) => {
+    setFormData(prev => ({ ...prev, mgrp_code: mgrpCode || "", attributes: {} }));
+    if (mgrpCode) {
+      await loadMaterialAttributes(mgrpCode);
+    }
   };
 
   const handleSaveMaterial = async () => {
@@ -281,6 +355,13 @@ export default function MaterialsPage() {
                 <td className="px-6 py-4 text-sm text-gray-900">{material.created || "-"}</td>
                 <td className="px-6 py-4 text-sm text-gray-900">
                   <div className="flex space-x-2">
+                    <button
+                      onClick={() => handleView(material)}
+                      className="text-green-600 hover:text-green-800 p-2 rounded-full hover:bg-green-50 transition duration-200"
+                      title="View"
+                    >
+                      <Eye size={16} />
+                    </button>
                     {checkPermission("item", "update") && (
                       <button
                         onClick={() => handleEdit(material)}
@@ -337,7 +418,9 @@ export default function MaterialsPage() {
 
       {/* Material Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+        >
           <div className="bg-white rounded-lg shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center p-6 border-b">
               <h2 className="text-xl font-semibold text-gray-800">
@@ -349,6 +432,12 @@ export default function MaterialsPage() {
             </div>
 
             <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+              {error && (
+                <div className="md:col-span-2 bg-red-50 border border-red-200 rounded-lg p-3">
+                  <div className="text-red-600 text-sm">{error}</div>
+                </div>
+              )}
+              
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">SAP Item ID</label>
                 <input
@@ -356,32 +445,51 @@ export default function MaterialsPage() {
                   name="sap_item_id"
                   value={formData.sap_item_id}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-2 border rounded-lg"
+                  className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="SAP Item ID"
                 />
               </div>
+              
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Material Type Code *</label>
-                <input
-                  type="text"
-                  name="mat_type_code"
+                <SearchableDropdown
+                  label="Material Type Code *"
+                  options={materialTypes}
                   value={formData.mat_type_code}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-2 border rounded-lg"
-                  placeholder="Material Type Code"
+                  onChange={(value) => setFormData(prev => ({ ...prev, mat_type_code: value || "" }))}
+                  placeholder="Select material type..."
+                  searchPlaceholder="Search material types..."
+                  required
+                  getOptionLabel={(option) => {
+                    if (typeof option === 'string') return option;
+                    return option.mat_type_code ? `${option.mat_type_code} - ${option.mat_type_desc || ''}` : (option.mat_type_desc || String(option));
+                  }}
+                  getOptionValue={(option) => {
+                    if (typeof option === 'string') return option;
+                    return option.mat_type_code || option;
+                  }}
                 />
               </div>
+              
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Material Group Code *</label>
-                <input
-                  type="text"
-                  name="mgrp_code"
+                <SearchableDropdown
+                  label="Material Group Code *"
+                  options={materialGroups}
                   value={formData.mgrp_code}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-2 border rounded-lg"
-                  placeholder="Material Group Code"
+                  onChange={handleMgrpCodeChange}
+                  placeholder="Select material group..."
+                  searchPlaceholder="Search material groups..."
+                  required
+                  getOptionLabel={(option) => {
+                    if (typeof option === 'string') return option;
+                    return option.mgrp_code ? `${option.mgrp_code} - ${option.mgrp_shortname || option.mgrp_longname || ''}` : (option.mgrp_shortname || option.mgrp_longname || String(option));
+                  }}
+                  getOptionValue={(option) => {
+                    if (typeof option === 'string') return option;
+                    return option.mgrp_code || option;
+                  }}
                 />
               </div>
+              
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Search Text</label>
                 <input
@@ -389,10 +497,11 @@ export default function MaterialsPage() {
                   name="search_text"
                   value={formData.search_text}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-2 border rounded-lg"
+                  className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Search text"
                 />
               </div>
+              
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Item Description *</label>
                 <textarea
@@ -400,10 +509,39 @@ export default function MaterialsPage() {
                   value={formData.item_desc}
                   onChange={handleInputChange}
                   rows={3}
-                  className="w-full px-4 py-2 border rounded-lg"
+                  className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Item description"
                 />
               </div>
+              
+              {/* Attributes Section */}
+              {formData.mgrp_code && Object.keys(materialAttributes).length > 0 && (
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Attributes</label>
+                  <div className="border rounded-lg p-4 bg-gray-50">
+                    {Object.entries(materialAttributes).map(([attrName, attrConfig]) => {
+                      const values = attrConfig.values || [];
+                      const currentValue = formData.attributes[attrName] || "";
+                      return (
+                        <div key={attrName} className="mb-4 last:mb-0">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">{attrName}</label>
+                          <select
+                            value={currentValue}
+                            onChange={(e) => handleAttributeChange(attrName, e.target.value)}
+                            className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                          >
+                            <option value="">Select {attrName}</option>
+                            {values.map((value) => (
+                              <option key={value} value={value}>{value}</option>
+                            ))}
+                          </select>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+              
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
                 <textarea
@@ -411,7 +549,7 @@ export default function MaterialsPage() {
                   value={formData.notes}
                   onChange={handleInputChange}
                   rows={2}
-                  className="w-full px-4 py-2 border rounded-lg"
+                  className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Additional notes"
                 />
               </div>
@@ -427,8 +565,8 @@ export default function MaterialsPage() {
               </button>
               <button
                 onClick={handleSaveMaterial}
-                disabled={saving}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg disabled:opacity-50 flex items-center"
+                disabled={saving || !formData.mat_type_code || !formData.mgrp_code || !formData.item_desc}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center"
               >
                 {saving && <Loader2 className="animate-spin h-4 w-4 mr-2" />}
                 {editingMaterial ? "Save Changes" : "Add Material"}
@@ -437,6 +575,29 @@ export default function MaterialsPage() {
           </div>
         </div>
       )}
+
+      {/* View Modal */}
+      <ViewModal
+        isOpen={isViewModalOpen}
+        onClose={() => {
+          setIsViewModalOpen(false);
+          setViewingMaterial(null);
+        }}
+        data={viewingMaterial}
+        title="View Material Details"
+        fieldLabels={{
+          local_item_id: "Local Item ID",
+          sap_item_id: "SAP Item ID",
+          mat_type_code: "Material Type Code",
+          mgrp_code: "Material Group Code",
+          item_desc: "Item Description",
+          search_text: "Search Text",
+          attributes: "Attributes",
+          notes: "Notes",
+          created: "Created",
+          updated: "Updated"
+        }}
+      />
     </div>
   );
 }

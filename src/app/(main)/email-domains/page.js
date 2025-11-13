@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import {
-  Plus, Edit, Trash2, Search, Mail, Info, Loader2,PlusCircle
+  Plus, Edit, Trash2, Search, Mail, Info, Loader2,PlusCircle, Eye
 } from "lucide-react";
 import { 
   fetchEmailDomains, 
@@ -10,11 +10,14 @@ import {
   deleteEmailDomain 
 } from "@/lib/api";
 import {useAuth} from "@/context/AuthContext";
+import ViewModal from "@/components/ViewModal";
 
 export default function EmailDomainsPage() {
   const [domains, setDomains] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [viewingDomain, setViewingDomain] = useState(null);
   const [editingDomain, setEditingDomain] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -77,6 +80,11 @@ export default function EmailDomainsPage() {
     });
     setIsModalOpen(true);
     setError(null);
+  };
+
+  const handleView = (domain) => {
+    setViewingDomain(domain);
+    setIsViewModalOpen(true);
   };
 
   const handleEdit = (domain) => {
@@ -287,6 +295,13 @@ export default function EmailDomainsPage() {
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex space-x-3">
+                            <button
+                              onClick={() => handleView(domain)}
+                              className="text-green-600 hover:text-green-800 p-2 rounded-full hover:bg-green-100 transition duration-200"
+                              title="View"
+                            >
+                              <Eye size={18} />
+                            </button>
                             {checkPermission("email", "update") && (
                               <button
                                 onClick={() => handleEdit(domain)}
@@ -477,6 +492,25 @@ export default function EmailDomainsPage() {
           </div>
         </div>
       )}
+
+      {/* View Modal */}
+      <ViewModal
+        isOpen={isViewModalOpen}
+        onClose={() => {
+          setIsViewModalOpen(false);
+          setViewingDomain(null);
+        }}
+        data={viewingDomain}
+        title="View Email Domain Details"
+        fieldLabels={{
+          emaildomain_id: "Email Domain ID",
+          domain_name: "Domain Name",
+          created: "Created",
+          createdby: "Created By",
+          updated: "Updated",
+          updatedby: "Updated By"
+        }}
+      />
     </div>
   );
 }

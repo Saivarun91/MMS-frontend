@@ -1,62 +1,200 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
-  Plus, Edit, Trash2, Search, Settings, Info, Loader2,PlusCircle
+  Plus, Edit, Trash2, Search, Settings, Info, Loader2, PlusCircle, X, Eye
 } from "lucide-react";
-import { fetchMaterialAttributes, createMaterialAttribute, updateMaterialAttribute, deleteMaterialAttribute } from "../../../lib/api";
+import { fetchMaterialAttributes, createMaterialAttribute, updateMaterialAttribute, deleteMaterialAttribute, fetchMaterialGroups } from "../../../lib/api";
 import {useAuth} from "@/context/AuthContext";
 import BackButton from "@/components/BackButton";
+import SearchableDropdown from "@/components/SearchableDropdown";
+import ViewModal from "@/components/ViewModal";
+
+// Component to display attributes as badges with overflow handling
+function AttributeBadges({ attributes }) {
+  const containerRef = useRef(null);
+  const badgeRefs = useRef({});
+  const [visibleCount, setVisibleCount] = useState(Object.keys(attributes).length);
+
+  useEffect(() => {
+    const calculateVisibleCount = () => {
+      if (!containerRef.current) return;
+      
+      const containerWidth = containerRef.current.offsetWidth;
+      if (containerWidth === 0) return;
+      
+      const attrEntries = Object.entries(attributes);
+      if (attrEntries.length === 0) {
+        setVisibleCount(0);
+        return;
+      }
+      
+      const gap = 8; // gap-2 = 8px
+      const moreBadgeWidth = 55; // Approximate width for "+X" badge
+      let usedWidth = 0;
+      let count = 0;
+      
+      // Try to fit badges one by one
+      for (let i = 0; i < attrEntries.length; i++) {
+        const [attrName] = attrEntries[i];
+        const badgeElement = badgeRefs.current[attrName];
+        
+        if (badgeElement) {
+          const badgeWidth = badgeElement.offsetWidth;
+          const remainingCount = attrEntries.length - i - 1;
+          
+          // Check if we need space for "+X more" badge
+          const neededForMore = remainingCount > 0 ? moreBadgeWidth + gap : 0;
+          
+          if (usedWidth + badgeWidth + gap + neededForMore <= containerWidth) {
+            usedWidth += badgeWidth + gap;
+            count++;
+          } else {
+            // Can't fit this badge, show "+X more" instead
+            break;
+          }
+        } else {
+          // If badge not rendered yet, estimate width
+          const estimatedWidth = Math.max(50, attrName.length * 7 + 24) + gap;
+          const remainingCount = attrEntries.length - i - 1;
+          const neededForMore = remainingCount > 0 ? moreBadgeWidth + gap : 0;
+          
+          if (usedWidth + estimatedWidth + neededForMore <= containerWidth) {
+            usedWidth += estimatedWidth;
+            count++;
+          } else {
+            break;
+          }
+        }
+      }
+      
+      setVisibleCount(Math.max(0, count));
+    };
+
+    // Initial calculation after DOM update
+    const timeoutId = setTimeout(calculateVisibleCount, 50);
+    
+    // Use ResizeObserver for container size changes
+    let resizeObserver;
+    if (containerRef.current && window.ResizeObserver) {
+      resizeObserver = new ResizeObserver(() => {
+        setTimeout(calculateVisibleCount, 10);
+      });
+      resizeObserver.observe(containerRef.current);
+    }
+    
+    window.addEventListener('resize', calculateVisibleCount);
+    
+    return () => {
+      clearTimeout(timeoutId);
+      window.removeEventListener('resize', calculateVisibleCount);
+      if (resizeObserver) {
+        resizeObserver.disconnect();
+      }
+    };
+  }, [attributes]);
+
+  const attrEntries = Object.entries(attributes);
+  const visibleAttributes = attrEntries.slice(0, visibleCount);
+  const hiddenCount = attrEntries.length - visibleCount;
+
+  if (attrEntries.length === 0) {
+    return (
+      <span className="text-sm text-gray-400 italic">No attributes</span>
+    );
+  }
+
+  return (
+    <div ref={containerRef} className="flex flex-wrap items-center gap-2 max-w-full">
+      {visibleAttributes.map(([attrName, attrConfig]) => (
+        <span
+          key={attrName}
+          ref={(el) => badgeRefs.current[attrName] = el}
+          className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 border border-blue-200 shadow-sm hover:shadow-md transition-shadow duration-200 whitespace-nowrap"
+          title={`${attrName}: ${attrConfig.values?.join(", ") || "N/A"}`}
+        >
+          {attrName}
+        </span>
+      ))}
+      {hiddenCount > 0 && (
+        <span
+          className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 border border-gray-300 shadow-sm cursor-default whitespace-nowrap"
+          title={`${hiddenCount} more attribute${hiddenCount > 1 ? 's' : ''}: ${attrEntries.slice(visibleCount).map(([name]) => name).join(", ")}`}
+        >
+          +{hiddenCount}
+        </span>
+      )}
+    </div>
+  );
+}
+
 export default function MaterialAttributesPage() {
   const [attributes, setAttributes] = useState([]);
+  const [materialGroups, setMaterialGroups] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [viewingAttribute, setViewingAttribute] = useState(null);
   const [editingAttribute, setEditingAttribute] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
+  
   const [formData, setFormData] = useState({
     mgrp_code: "",
-    attrib_printpriority: 0,
-    attrib_name: "",
-    attrib_printname: "",
-    attrib_name_validation: "",
-    att_maxnamelen: "",
-    attrib_tagname: "",
-    attrib_tag_validation: "",
-    attrib_maxtaglen: "",
+    attributes: {}, // JSON structure: { "Color": { "values": ["Red", "Blue"], "print_priority": 1, ... } }
   });
+  
+  // For adding new attribute in form
+  const [newAttrName, setNewAttrName] = useState("");
+  const [newAttrValues, setNewAttrValues] = useState("");
+  const [newAttrPrintPriority, setNewAttrPrintPriority] = useState(0);
+  const [newAttrValidation, setNewAttrValidation] = useState("");
+  const [newAttrMaxLength, setNewAttrMaxLength] = useState("");
+  const [newAttrUnit, setNewAttrUnit] = useState("");
+  
   const {user,token,role,checkPermission} = useAuth();
+  
   // Load data on component mount
   useEffect(() => {
-    loadAttributes();
+    if (token) {
+      loadAttributes();
+      loadMaterialGroups();
+    }
   }, [token]);
-  console.log("token",token);
+
 
   const loadAttributes = async () => {
     try {
       setLoading(true);
       setError(null);
-      // const token = localStorage.getItem("token");
       const data = await fetchMaterialAttributes(token);
-      console.log("data",data);
-      setAttributes(data);
+      setAttributes(data || []);
     } catch (err) {
-      // setError("Failed to load material attributes: " + (err.response?.data?.error || err.message));
+      setError("Failed to load material attributes: " + (err.response?.data?.error || err.message));
       console.error("Error loading material attributes:", err);
     } finally {
       setLoading(false);
     }
   };
 
+  const loadMaterialGroups = async () => {
+    try {
+      const data = await fetchMaterialGroups(token);
+      setMaterialGroups(data || []);
+    } catch (err) {
+      console.error("Error loading material groups:", err);
+    }
+  };
+
   // Filter attributes
   const filteredAttributes = attributes.filter(attribute => {
     const matchesSearch =
-      (attribute.attrib_name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (attribute.attrib_printname || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (attribute.attrib_tagname || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (attribute.mgrp_code || "").toLowerCase().includes(searchTerm.toLowerCase());
+      (attribute.mgrp_code || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      Object.keys(attribute.attributes || {}).some(key => 
+        key.toLowerCase().includes(searchTerm.toLowerCase())
+      );
 
     return matchesSearch;
   });
@@ -71,39 +209,40 @@ export default function MaterialAttributesPage() {
     setCurrentPage(page);
   };
 
-  // const role = localStorage.getItem("role");
-
   // Modal handlers
   const handleAddNew = () => {
     setEditingAttribute(null);
     setFormData({
       mgrp_code: "",
-      attrib_printpriority: 0,
-      attrib_name: "",
-      attrib_printname: "",
-      attrib_name_validation: "",
-      att_maxnamelen: "",
-      attrib_tagname: "",
-      attrib_tag_validation: "",
-      attrib_maxtaglen: "",
+      attributes: {},
     });
+    setNewAttrName("");
+    setNewAttrValues("");
+    setNewAttrPrintPriority(0);
+    setNewAttrValidation("");
+    setNewAttrMaxLength("");
+    setNewAttrUnit("");
     setIsModalOpen(true);
     setError(null);
+  };
+
+  const handleView = (attribute) => {
+    setViewingAttribute(attribute);
+    setIsViewModalOpen(true);
   };
 
   const handleEdit = (attribute) => {
     setEditingAttribute(attribute);
     setFormData({
       mgrp_code: attribute.mgrp_code || "",
-      attrib_printpriority: attribute.attrib_printpriority || 0,
-      attrib_name: attribute.attrib_name || "",
-      attrib_printname: attribute.attrib_printname || "",
-      attrib_name_validation: attribute.attrib_name_validation || "",
-      att_maxnamelen: attribute.att_maxnamelen || "",
-      attrib_tagname: attribute.attrib_tagname || "",
-      attrib_tag_validation: attribute.attrib_tag_validation || "",
-      attrib_maxtaglen: attribute.attrib_maxtaglen || "",
+      attributes: attribute.attributes || {},
     });
+    setNewAttrName("");
+    setNewAttrValues("");
+    setNewAttrPrintPriority(0);
+    setNewAttrValidation("");
+    setNewAttrMaxLength("");
+    setNewAttrUnit("");
     setIsModalOpen(true);
     setError(null);
   };
@@ -114,17 +253,78 @@ export default function MaterialAttributesPage() {
     setError(null);
   };
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
+
+  const addAttributeToForm = () => {
+    if (!newAttrName || !newAttrValues) {
+      setError("Attribute name and values are required");
+      return;
+    }
+
+    // Check if unit is required for numeric validation
+    if (newAttrValidation.toLowerCase() === "numeric" && !newAttrUnit) {
+      setError("Unit to measure is required when validation is numeric");
+      return;
+    }
+
+    const valuesArray = newAttrValues.split(",").map(v => v.trim()).filter(v => v);
+    if (valuesArray.length === 0) {
+      setError("At least one value is required");
+      return;
+    }
+
+    const newAttr = {
+      values: valuesArray,
+      print_priority: parseInt(newAttrPrintPriority) || 0,
+    };
+
+    if (newAttrValidation) {
+      newAttr.validation = newAttrValidation;
+    }
+
+    if (newAttrMaxLength) {
+      newAttr.max_length = parseInt(newAttrMaxLength);
+    }
+
+    // Add unit if validation is numeric
+    if (newAttrValidation.toLowerCase() === "numeric" && newAttrUnit) {
+      newAttr.unit = newAttrUnit;
+    }
+
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      attributes: {
+        ...prev.attributes,
+        [newAttrName]: newAttr
+      }
+    }));
+
+    // Reset form
+    setNewAttrName("");
+    setNewAttrValues("");
+    setNewAttrPrintPriority(0);
+    setNewAttrValidation("");
+    setNewAttrMaxLength("");
+    setNewAttrUnit("");
+    setError(null);
+  };
+
+  const removeAttributeFromForm = (attrName) => {
+    const newAttributes = { ...formData.attributes };
+    delete newAttributes[attrName];
+    setFormData(prev => ({
+      ...prev,
+      attributes: newAttributes
     }));
   };
 
   const handleSaveAttribute = async () => {
-    if (!formData.mgrp_code || !formData.attrib_name || !formData.attrib_printname || !formData.attrib_tagname) {
-      setError("Please fill in required fields: Material Group Code, Attribute Name, Print Name, and Tag Name");
+    if (!formData.mgrp_code) {
+      setError("Material Group Code is required");
+      return;
+    }
+
+    if (Object.keys(formData.attributes).length === 0) {
+      setError("At least one attribute must be defined");
       return;
     }
 
@@ -144,14 +344,10 @@ export default function MaterialAttributesPage() {
     try {
       setSaving(true);
       setError(null);
-      // const token = localStorage.getItem("token");
 
-      // Convert numeric fields
       const dataToSend = {
-        ...formData,
-        attrib_printpriority: parseInt(formData.attrib_printpriority) || 0,
-        att_maxnamelen: formData.att_maxnamelen ? parseInt(formData.att_maxnamelen) : null,
-        attrib_maxtaglen: formData.attrib_maxtaglen ? parseInt(formData.attrib_maxtaglen) : null,
+        mgrp_code: formData.mgrp_code,
+        attributes: formData.attributes,
       };
 
       if (editingAttribute) {
@@ -180,7 +376,6 @@ export default function MaterialAttributesPage() {
       
       try {
         setError(null);
-        //  const token = localStorage.getItem("token");
         await deleteMaterialAttribute(token, attrib_id);
         await loadAttributes();
       } catch (err) {
@@ -193,9 +388,6 @@ export default function MaterialAttributesPage() {
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        
-
         {/* Error Message */}
         {error && (
           <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
@@ -216,7 +408,7 @@ export default function MaterialAttributesPage() {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
               <input
                 type="text"
-                placeholder="Search attributes by name, print name, tag name, or material group..."
+                placeholder="Search attributes by material group or attribute name..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -248,27 +440,11 @@ export default function MaterialAttributesPage() {
                 {/* Table Header */}
                 <thead>
                   <tr className="bg-gradient-to-r from-purple-600 via-pink-500 to-red-500 text-white uppercase tracking-wide">
-                    <th className="px-6 py-4 text-left text-sm font-semibold cursor-pointer select-none hover:brightness-110 transition-all duration-300">
-                      Material Group
-                    </th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold">
-                      Attribute Name
-                    </th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold">
-                      Print Name
-                    </th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold">
-                      Tag Name
-                    </th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold">
-                      Priority
-                    </th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold">
-                      Created
-                    </th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold">
-                      Actions
-                    </th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold">Material Group</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold">Attributes</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold">Created</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold">Updated</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold">Actions</th>
                   </tr>
                 </thead>
 
@@ -288,22 +464,27 @@ export default function MaterialAttributesPage() {
                           </div>
                         </td>
                         <td className="px-6 py-4">
-                          <div className="text-sm text-gray-900 font-medium">{attribute.attrib_name}</div>
+                          <AttributeBadges attributes={attribute.attributes || {}} />
                         </td>
                         <td className="px-6 py-4">
-                          <div className="text-sm text-gray-900">{attribute.attrib_printname}</div>
+                          <div className="text-sm text-gray-500">
+                            {attribute.created ? new Date(attribute.created).toLocaleDateString() : '-'}
+                          </div>
                         </td>
                         <td className="px-6 py-4">
-                          <div className="text-sm text-gray-900">{attribute.attrib_tagname}</div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="text-sm text-gray-900">{attribute.attrib_printpriority}</div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="text-sm text-gray-500">{attribute.created ? new Date(attribute.created).toLocaleDateString() : '-'}</div>
+                          <div className="text-sm text-gray-500">
+                            {attribute.updated ? new Date(attribute.updated).toLocaleDateString() : '-'}
+                          </div>
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex space-x-3">
+                            <button
+                              onClick={() => handleView(attribute)}
+                              className="text-green-600 hover:text-green-800 p-2 rounded-full hover:bg-green-100 transition duration-200"
+                              title="View"
+                            >
+                              <Eye size={18} />
+                            </button>
                             {checkPermission("attribute", "update") && (
                               <button
                                 onClick={() => handleEdit(attribute)}
@@ -328,7 +509,7 @@ export default function MaterialAttributesPage() {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan="7" className="px-6 py-12 text-center">
+                      <td colSpan="5" className="px-6 py-12 text-center">
                         <div className="flex flex-col items-center justify-center text-gray-400">
                           <Settings size={48} className="mb-4 opacity-50" />
                           <p className="text-lg font-medium text-gray-500 mb-1">
@@ -419,31 +600,13 @@ export default function MaterialAttributesPage() {
             )}
           </div>
         )}
-
-        {/* Info Section */}
-        {/* <div className="bg-blue-50 rounded-lg p-6 mt-6 border border-blue-200">
-          <div className="flex items-start">
-            <div className="bg-blue-100 p-3 rounded-lg mr-4">
-              <Info className="h-6 w-6 text-blue-600" />
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold text-blue-800 mb-2">Material Attributes Guide</h3>
-              <ul className="list-disc list-inside text-blue-700 space-y-1">
-                <li>Material attributes define properties and validation rules for material groups</li>
-                <li>Print priority determines the order of attributes in printed material names</li>
-                <li>Validation rules ensure data consistency and compliance</li>
-                <li>Use the search bar to find attributes by name, print name, or material group</li>
-                <li>Click the "Add Attribute" button to create new material attributes</li>
-                <li>Use the edit and delete icons to modify or remove attributes</li>
-              </ul>
-            </div>
-          </div>
-        </div> */}
       </div>
 
       {/* Attribute Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+        >
           <div className="bg-white rounded-lg shadow-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center p-6 border-b">
               <h2 className="text-xl font-semibold text-gray-800">
@@ -454,120 +617,154 @@ export default function MaterialAttributesPage() {
               </button>
             </div>
 
-            <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="p-6 space-y-6">
               {error && (
-                <div className="md:col-span-2 bg-red-50 border border-red-200 rounded-lg p-3">
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3">
                   <div className="text-red-600 text-sm">{error}</div>
                 </div>
               )}
               
+              {/* Material Group Selection */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Material Group Code *</label>
-                <input
-                  type="text"
-                  name="mgrp_code"
+                <SearchableDropdown
+                  label="Material Group Code *"
+                  options={materialGroups}
                   value={formData.mgrp_code}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="MGRP-001"
+                  onChange={(value) => setFormData(prev => ({ ...prev, mgrp_code: value || "" }))}
+                  placeholder="Select material group..."
+                  searchPlaceholder="Search material groups..."
+                  required
+                  getOptionLabel={(option) => {
+                    if (typeof option === 'string') return option;
+                    return option.mgrp_code ? `${option.mgrp_code} - ${option.mgrp_shortname || option.mgrp_longname || ''}` : (option.mgrp_shortname || option.mgrp_longname || String(option));
+                  }}
+                  getOptionValue={(option) => {
+                    if (typeof option === 'string') return option;
+                    return option.mgrp_code || option;
+                  }}
                 />
               </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Print Priority</label>
-                <input
-                  type="number"
-                  name="attrib_printpriority"
-                  value={formData.attrib_printpriority}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="0"
-                />
+
+              {/* Add New Attribute Form */}
+              <div className="border rounded-lg p-4 bg-gray-50">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">Add New Attribute</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Attribute Name *</label>
+                    <input
+                      type="text"
+                      value={newAttrName}
+                      onChange={(e) => setNewAttrName(e.target.value)}
+                      className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="e.g., Color"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Values (comma-separated) *</label>
+                    <input
+                      type="text"
+                      value={newAttrValues}
+                      onChange={(e) => setNewAttrValues(e.target.value)}
+                      className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="e.g., Red, Blue, Green"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Print Priority</label>
+                    <input
+                      type="number"
+                      value={newAttrPrintPriority}
+                      onChange={(e) => setNewAttrPrintPriority(parseInt(e.target.value) || 0)}
+                      className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="0"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Validation</label>
+                    <select
+                      value={newAttrValidation}
+                      onChange={(e) => {
+                        setNewAttrValidation(e.target.value);
+                        // Clear unit if validation is not numeric
+                        if (e.target.value.toLowerCase() !== "numeric") {
+                          setNewAttrUnit("");
+                        }
+                      }}
+                      className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Select validation type</option>
+                      <option value="alpha">Alpha</option>
+                      <option value="numeric">Numeric</option>
+                      <option value="alphanumeric">Alphanumeric</option>
+                    </select>
+                  </div>
+                  {newAttrValidation.toLowerCase() === "numeric" && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Unit to Measure *</label>
+                      <input
+                        type="text"
+                        value={newAttrUnit}
+                        onChange={(e) => setNewAttrUnit(e.target.value)}
+                        className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="e.g., kg, m, cm, liters"
+                      />
+                    </div>
+                  )}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Max Length</label>
+                    <input
+                      type="number"
+                      value={newAttrMaxLength}
+                      onChange={(e) => setNewAttrMaxLength(e.target.value)}
+                      className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="e.g., 10"
+                    />
+                  </div>
+                  <div className="flex items-end">
+                    <button
+                      onClick={addAttributeToForm}
+                      className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center"
+                    >
+                      <Plus size={18} className="mr-2" />
+                      Add Attribute
+                    </button>
+                  </div>
+                </div>
               </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Attribute Name *</label>
-                <input
-                  type="text"
-                  name="attrib_name"
-                  value={formData.attrib_name}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Color"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Print Name *</label>
-                <input
-                  type="text"
-                  name="attrib_printname"
-                  value={formData.attrib_printname}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="CLR"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Name Validation</label>
-                <input
-                  type="text"
-                  name="attrib_name_validation"
-                  value={formData.attrib_name_validation}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Validation rule"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Max Name Length</label>
-                <input
-                  type="number"
-                  name="att_maxnamelen"
-                  value={formData.att_maxnamelen}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="50"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Tag Name *</label>
-                <input
-                  type="text"
-                  name="attrib_tagname"
-                  value={formData.attrib_tagname}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="color"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Tag Validation</label>
-                <input
-                  type="text"
-                  name="attrib_tag_validation"
-                  value={formData.attrib_tag_validation}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Tag validation rule"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Max Tag Length</label>
-                <input
-                  type="number"
-                  name="attrib_maxtaglen"
-                  value={formData.attrib_maxtaglen}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="20"
-                />
-              </div>
+
+              {/* Existing Attributes */}
+              {Object.keys(formData.attributes).length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4">Defined Attributes</h3>
+                  <div className="space-y-3">
+                    {Object.entries(formData.attributes).map(([attrName, attrConfig]) => (
+                      <div key={attrName} className="border rounded-lg p-4 bg-white">
+                        <div className="flex justify-between items-start mb-2">
+                          <div>
+                            <div className="font-semibold text-gray-900">{attrName}</div>
+                            <div className="text-sm text-gray-600 mt-1">
+                              Values: {attrConfig.values?.join(", ") || "N/A"}
+                            </div>
+                            <div className="text-xs text-gray-500 mt-1">
+                              Priority: {attrConfig.print_priority || 0}
+                              {attrConfig.validation && ` | Validation: ${attrConfig.validation}`}
+                              {attrConfig.unit && ` | Unit: ${attrConfig.unit}`}
+                              {attrConfig.max_length && ` | Max Length: ${attrConfig.max_length}`}
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => removeAttributeFromForm(attrName)}
+                            className="text-red-600 hover:text-red-800 p-1 rounded-full hover:bg-red-50"
+                            title="Remove"
+                          >
+                            <X size={18} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="flex justify-end space-x-3 p-6 border-t">
@@ -580,7 +777,7 @@ export default function MaterialAttributesPage() {
               </button>
               <button
                 onClick={handleSaveAttribute}
-                disabled={saving || !formData.mgrp_code || !formData.attrib_name || !formData.attrib_printname || !formData.attrib_tagname}
+                disabled={saving || !formData.mgrp_code || Object.keys(formData.attributes).length === 0}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center"
               >
                 {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
@@ -590,6 +787,24 @@ export default function MaterialAttributesPage() {
           </div>
         </div>
       )}
+
+      {/* View Modal */}
+      <ViewModal
+        isOpen={isViewModalOpen}
+        onClose={() => {
+          setIsViewModalOpen(false);
+          setViewingAttribute(null);
+        }}
+        data={viewingAttribute}
+        title="View Material Attribute Details"
+        fieldLabels={{
+          attrib_id: "Attribute ID",
+          mgrp_code: "Material Group Code",
+          attributes: "Attributes",
+          created: "Created",
+          updated: "Updated"
+        }}
+      />
     </div>
   );
 }

@@ -1,8 +1,9 @@
 "use client";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { fetchRequests, fetchChatMessages, addChatMessage, updateRequest, assignSapItem } from "@/lib/api";
+import { fetchRequests, fetchChatMessages, addChatMessage, updateRequest, assignSapItem, assignMaterialGroup, fetchMaterialGroups, fetchItemMasters } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+import SearchableDropdown from "@/components/SearchableDropdown";
 
 export default function RequestDetailPage() {
   const { id } = useParams();
@@ -14,6 +15,9 @@ export default function RequestDetailPage() {
   const [chatMessages, setChatMessages] = useState([]);
   const [message, setMessage] = useState("");
   const [sapId, setSapId] = useState("");
+  const [materialGroupCode, setMaterialGroupCode] = useState("");
+  const [materialGroups, setMaterialGroups] = useState([]);
+  const [items, setItems] = useState([]);
   const searchParams = useSearchParams();
   const mode = searchParams.get("mode"); // ?mode=edit if Edit clicked in list\
   // console.log("mode : ", mode)
@@ -27,7 +31,10 @@ export default function RequestDetailPage() {
     priority: "High",
     status: "Open",
   });
-  const canClose = user?.role === 'MDGT' ? Boolean(request?.sap_item) : true;
+  const canClose = user?.role === 'MDGT' 
+    ? (request?.type === 'material' ? Boolean(request?.sap_item) : 
+       request?.type === 'material group' ? Boolean(request?.material_group) : true)
+    : true;
 
 
   useEffect(() => {
@@ -179,6 +186,51 @@ export default function RequestDetailPage() {
       window.dispatchEvent(new CustomEvent('showToast', { detail: { type: 'error', message: err.response?.data?.error || 'Failed to assign SAP' } }));
     }
   };
+
+  const handleAssignMaterialGroup = async () => {
+    if (!materialGroupCode.trim()) return;
+    try {
+      await assignMaterialGroup(token, id, materialGroupCode.trim());
+      window.dispatchEvent(new CustomEvent('showToast', { detail: { type: 'success', message: `Material Group ${materialGroupCode} assigned` } }));
+      setMaterialGroupCode("");
+      // refresh request header to reflect material group/status if needed
+      const data = await fetchRequests(token);
+      const updated = data.find((r) => r.request_id == id);
+      setRequest(updated);
+    } catch (err) {
+      window.dispatchEvent(new CustomEvent('showToast', { detail: { type: 'error', message: err.response?.data?.error || 'Failed to assign Material Group' } }));
+    }
+  };
+
+  // Load material groups when request type is "material group"
+  useEffect(() => {
+    const loadMaterialGroups = async () => {
+      if (token && request?.type === "material group" && user?.role === 'MDGT') {
+        try {
+          const data = await fetchMaterialGroups(token);
+          setMaterialGroups(data || []);
+        } catch (err) {
+          console.error("Error loading material groups:", err);
+        }
+      }
+    };
+    loadMaterialGroups();
+  }, [token, request?.type, user?.role]);
+
+  // Load items when request type is "material"
+  useEffect(() => {
+    const loadItems = async () => {
+      if (token && request?.type === "material" && user?.role === 'MDGT') {
+        try {
+          const data = await fetchItemMasters(token);
+          setItems(data || []);
+        } catch (err) {
+          console.error("Error loading items:", err);
+        }
+      }
+    };
+    loadItems();
+  }, [token, request?.type, user?.role]);
   console.log("chatMessages : ", chatMessages)
   const getPriorityClasses = (priority) => {
     switch (priority) {
@@ -306,21 +358,66 @@ export default function RequestDetailPage() {
                   </p>
                 </div> */}
               {/* </div> */}
-              {/* MDGT: Assign SAP Item */}
-              {user?.role === 'MDGT' && (
-                <div className="mt-4 flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={sapId}
-                    onChange={(e) => setSapId(e.target.value)}
-                    placeholder="Enter SAP Item ID"
-                    className="border rounded-lg p-2"
-                  />
+              {/* MDGT: Assign SAP Item or Material Group based on type */}
+              {user?.role === 'MDGT' && request?.type === 'material' && (
+                <div className="mt-4 flex items-end gap-2">
+                  <div className="flex-1">
+                    <SearchableDropdown
+                      options={items}
+                      value={sapId}
+                      onChange={(value) => setSapId(value || "")}
+                      placeholder="Select SAP Item ID"
+                      searchPlaceholder="Search items by SAP ID or description..."
+                      getOptionLabel={(option) => {
+                        if (!option) return "";
+                        if (option.sap_item_id) {
+                          return `${option.sap_item_id} - ${option.item_desc || ''}`;
+                        }
+                        return option.item_desc || String(option);
+                      }}
+                      getOptionValue={(option) => {
+                        if (!option) return "";
+                        return option.sap_item_id ? String(option.sap_item_id) : "";
+                      }}
+                    />
+                  </div>
                   <button
                     onClick={handleAssignSap}
-                    className="bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700"
+                    disabled={!sapId.trim()}
+                    className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
                   >
                     Assign SAP
+                  </button>
+                </div>
+              )}
+              {user?.role === 'MDGT' && request?.type === 'material group' && (
+                <div className="mt-4 flex items-end gap-2">
+                  <div className="flex-1">
+                    <SearchableDropdown
+                      options={materialGroups}
+                      value={materialGroupCode}
+                      onChange={(value) => setMaterialGroupCode(value || "")}
+                      placeholder="Select Material Group"
+                      searchPlaceholder="Search material groups..."
+                      getOptionLabel={(option) => {
+                        if (!option) return "";
+                        if (option.mgrp_code) {
+                          return `${option.mgrp_code} - ${option.mgrp_shortname || option.mgrp_longname || ''}`;
+                        }
+                        return option.mgrp_shortname || option.mgrp_longname || String(option);
+                      }}
+                      getOptionValue={(option) => {
+                        if (!option) return "";
+                        return option.mgrp_code || "";
+                      }}
+                    />
+                  </div>
+                  <button
+                    onClick={handleAssignMaterialGroup}
+                    disabled={!materialGroupCode.trim()}
+                    className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                  >
+                    Assign Material Group
                   </button>
                 </div>
               )}
@@ -361,10 +458,20 @@ export default function RequestDetailPage() {
                   </div>
 
                   {user?.role !== 'MDGT' && (
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <p className="text-xs text-gray-500 uppercase font-medium mb-1">SAP Item</p>
-                      <p className="font-medium text-gray-800">{request.sap_item || "-"}</p>
-                    </div>
+                    <>
+                      {request?.type === 'material' && (
+                        <div className="bg-gray-50 rounded-lg p-4">
+                          <p className="text-xs text-gray-500 uppercase font-medium mb-1">SAP Item</p>
+                          <p className="font-medium text-gray-800">{request.sap_item || "-"}</p>
+                        </div>
+                      )}
+                      {request?.type === 'material group' && (
+                        <div className="bg-gray-50 rounded-lg p-4">
+                          <p className="text-xs text-gray-500 uppercase font-medium mb-1">Material Group</p>
+                          <p className="font-medium text-gray-800">{request.material_group || "-"}</p>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
@@ -510,7 +617,12 @@ export default function RequestDetailPage() {
                       <button
                         onClick={handleSave}
                         className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
-                        disabled={user?.role === 'MDGT' && editedRequest.status === 'Closed' && !request?.sap_item}
+                        disabled={
+                          user?.role === 'MDGT' && 
+                          editedRequest.status === 'Closed' && 
+                          ((request?.type === 'material' && !request?.sap_item) || 
+                           (request?.type === 'material group' && !request?.material_group))
+                        }
                       >
                         Save
                       </button>
@@ -532,10 +644,18 @@ export default function RequestDetailPage() {
                       <span className="font-medium">Status:</span>{" "}
                       {request.status || "Open"}
                     </p>
-                    <p>
-                      <span className="font-medium">SAP Item:</span>{" "}
-                      {request.sap_item || "-"}
-                    </p>
+                    {request?.type === 'material' && (
+                      <p>
+                        <span className="font-medium">SAP Item:</span>{" "}
+                        {request.sap_item || "-"}
+                      </p>
+                    )}
+                    {request?.type === 'material group' && (
+                      <p>
+                        <span className="font-medium">Material Group:</span>{" "}
+                        {request.material_group || "-"}
+                      </p>
+                    )}
                   </div>
                 )}
               </div>

@@ -204,6 +204,12 @@ export const assignSapItem = (token, request_id, sap_item) => {
     return axiosInstance.put(`requests/assign-sap/${request_id}/`, { sap_item }).then(res => res.data);
 };
 
+// Assign Material Group (MDGT only)
+export const assignMaterialGroup = (token, request_id, material_group) => {
+    const axiosInstance = createAxiosInstance(token);
+    return axiosInstance.put(`requests/assign-material-group/${request_id}/`, { material_group }).then(res => res.data);
+};
+
 // Item Master API
 export const fetchItemMasters = (token) => {
     const axiosInstance = createAxiosInstance(token);

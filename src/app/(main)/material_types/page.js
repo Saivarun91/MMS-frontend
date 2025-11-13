@@ -2,7 +2,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import {
-  Plus, Edit, Trash2, Search, Tag, Info, Loader2
+  Plus, Edit, Trash2, Search, Tag, Info, Loader2, Eye
 } from "lucide-react";
 import { 
   fetchMaterialTypes, 
@@ -10,12 +10,15 @@ import {
   updateMaterialType, 
   deleteMaterialType 
 } from "@/lib/api";
-import {useAuth} from "@/context/AuthContext"; 
+import {useAuth} from "@/context/AuthContext";
+import ViewModal from "@/components/ViewModal"; 
 
 export default function MaterialTypesPage() {
   const [types, setTypes] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [viewingType, setViewingType] = useState(null);
   const [editingType, setEditingType] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -78,6 +81,11 @@ export default function MaterialTypesPage() {
     });
     setIsModalOpen(true);
     setError(null);
+  };
+
+  const handleView = (type) => {
+    setViewingType(type);
+    setIsViewModalOpen(true);
   };
 
   const handleEdit = (type) => {
@@ -270,6 +278,13 @@ export default function MaterialTypesPage() {
               <td className="px-6 py-4 text-gray-900 text-sm">{type.updated}</td>
               <td className="px-6 py-4">
                 <div className="flex space-x-2">
+                  <button
+                    onClick={() => handleView(type)}
+                    className="text-green-600 hover:text-green-800 p-2 rounded-full hover:bg-green-50 transition duration-200"
+                    title="View"
+                  >
+                    <Eye size={16} />
+                  </button>
                   {checkPermission("type", "update") && (
                     <button
                       onClick={() => handleEdit(type)}
@@ -454,6 +469,25 @@ export default function MaterialTypesPage() {
           </div>
         </div>
       )}
+
+      {/* View Modal */}
+      <ViewModal
+        isOpen={isViewModalOpen}
+        onClose={() => {
+          setIsViewModalOpen(false);
+          setViewingType(null);
+        }}
+        data={viewingType}
+        title="View Material Type Details"
+        fieldLabels={{
+          mat_type_code: "Material Type Code",
+          mat_type_desc: "Description",
+          created: "Created",
+          createdby: "Created By",
+          updated: "Updated",
+          updatedby: "Updated By"
+        }}
+      />
     </div>
   );
 }

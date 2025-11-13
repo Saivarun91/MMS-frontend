@@ -1,16 +1,19 @@
 "use client";
 import { useState, useEffect } from "react";
 import {
-  Plus, Edit, Trash2, Search, Users, Info, Loader2
+  Plus, Edit, Trash2, Search, Users, Info, Loader2, Eye
 } from "lucide-react";
 import { fetchSuperGroups, createSuperGroup, updateSuperGroup, deleteSuperGroup } from "../../../lib/api";
 import {useAuth} from "@/context/AuthContext";
 import BackButton from "@/components/BackButton";
+import ViewModal from "@/components/ViewModal";
 
 export default function SupergroupsPage() {
   const [supergroups, setSupergroups] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [viewingSupergroup, setViewingSupergroup] = useState(null);
   const [editingSupergroup, setEditingSupergroup] = useState(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -109,6 +112,11 @@ export default function SupergroupsPage() {
     });
     setIsModalOpen(true);
     setError(null);
+  };
+
+  const handleView = (supergroup) => {
+    setViewingSupergroup(supergroup);
+    setIsViewModalOpen(true);
   };
 
   const handleEdit = (supergroup) => {
@@ -287,6 +295,13 @@ export default function SupergroupsPage() {
                 <td className="px-6 py-4 text-sm text-gray-900">{supergroup.createdby}</td>
                 <td className="px-6 py-4 text-sm text-gray-900">
                   <div className="flex space-x-2">
+                    <button
+                      onClick={() => handleView(supergroup)}
+                      className="text-green-600 hover:text-green-800 p-2 rounded-full hover:bg-green-50 transition duration-200"
+                      title="View"
+                    >
+                      <Eye size={16} />
+                    </button>
                     {checkPermission("super", "update") && (
                       <button
                         onClick={() => handleEdit(supergroup)}
@@ -472,6 +487,26 @@ export default function SupergroupsPage() {
           </div>
         </div>
       )}
+
+      {/* View Modal */}
+      <ViewModal
+        isOpen={isViewModalOpen}
+        onClose={() => {
+          setIsViewModalOpen(false);
+          setViewingSupergroup(null);
+        }}
+        data={viewingSupergroup}
+        title="View Supergroup Details"
+        fieldLabels={{
+          sgrp_code: "Supergroup Code",
+          sgrp_name: "Name",
+          dept_name: "Department Name",
+          created: "Created",
+          createdby: "Created By",
+          updated: "Updated",
+          updatedby: "Updated By"
+        }}
+      />
     </div>
   );
 }

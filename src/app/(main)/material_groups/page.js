@@ -2,21 +2,27 @@
 "use client";
 import { useState, useEffect } from "react";
 import {
-  Plus, Edit, Trash2, Search, Folder, Info, Loader2, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, CheckCircle, PlusCircle, FolderOpen
+  Plus, Edit, Trash2, Search, Folder, Info, Loader2, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, CheckCircle, PlusCircle, FolderOpen, Eye
 } from "lucide-react";
 import { 
   fetchMaterialGroups, 
   createMaterialGroup, 
   updateMaterialGroup, 
-  deleteMaterialGroup 
+  deleteMaterialGroup,
+  fetchSuperGroups
 } from "@/lib/api";
 import {useAuth} from "@/context/AuthContext";
 import BackButton from "@/components/BackButton";
+import SearchableDropdown from "@/components/SearchableDropdown";
+import ViewModal from "@/components/ViewModal";
 
 export default function MaterialGroupsPage() {
   const [groups, setGroups] = useState([]);
+  const [superGroups, setSuperGroups] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [viewingGroup, setViewingGroup] = useState(null);
   const [editingGroup, setEditingGroup] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -26,7 +32,7 @@ export default function MaterialGroupsPage() {
   const [sortField, setSortField] = useState('mgrp_code');
   const [sortDirection, setSortDirection] = useState('asc');
   
-  const {user,token,role} = useAuth();
+  const {user,token,role,checkPermission} = useAuth();
   
   const formDataDefaults = {
     mgrp_code: "",
@@ -44,6 +50,7 @@ export default function MaterialGroupsPage() {
   useEffect(() => {
     if (token) {
       loadMaterialGroups();
+      loadSuperGroups();
     }
   }, [token]);
 
@@ -62,6 +69,16 @@ export default function MaterialGroupsPage() {
       console.error("Error loading material groups:", err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadSuperGroups = async () => {
+    if (!token) return;
+    try {
+      const data = await fetchSuperGroups(token);
+      setSuperGroups(data || []);
+    } catch (err) {
+      console.error("Error loading super groups:", err);
     }
   };
 
@@ -119,13 +136,18 @@ export default function MaterialGroupsPage() {
     setError(null);
   };
 
+  const handleView = (group) => {
+    setViewingGroup(group);
+    setIsViewModalOpen(true);
+  };
+
   const handleEdit = (group) => {
     setEditingGroup(group);
     setFormData({
       mgrp_code: group.mgrp_code,
       mgrp_shortname: group.mgrp_shortname,
       mgrp_longname: group.mgrp_longname,
-      sgrp_code: group.sgrp_code?.sgrp_code || "",
+      sgrp_code: group.sgrp_code?.sgrp_code || group.sgrp_code || "",
       is_service: group.is_service,
       attribgrpid: group.attribgrpid || "",
       notes: group.notes || "",
@@ -194,9 +216,7 @@ export default function MaterialGroupsPage() {
     }
   };
 
-  const checkPermission = (resource, action) => {
-    return role === "MDGT";
-  };
+
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -338,6 +358,13 @@ export default function MaterialGroupsPage() {
             </td>
             <td className="px-6 py-4">
               <div className="flex space-x-3">
+                <button
+                  onClick={() => handleView(group)}
+                  className="text-green-600 hover:text-green-800 p-2 rounded-full hover:bg-green-100 transition duration-200"
+                  title="View"
+                >
+                  <Eye size={18} />
+                </button>
                 {checkPermission("group", "update") && (
                   <button
                     onClick={() => handleEdit(group)}
@@ -559,14 +586,21 @@ export default function MaterialGroupsPage() {
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Super Group Code</label>
-                <input
-                  type="text"
-                  name="sgrp_code"
+                <SearchableDropdown
+                  label="Super Group Code"
+                  options={superGroups}
                   value={formData.sgrp_code}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-2.5 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  placeholder="SGRP-001"
+                  onChange={(value) => setFormData(prev => ({ ...prev, sgrp_code: value || "" }))}
+                  placeholder="Select super group..."
+                  searchPlaceholder="Search super groups..."
+                  getOptionLabel={(option) => {
+                    if (typeof option === 'string') return option;
+                    return option.sgrp_code ? `${option.sgrp_code} - ${option.sgrp_name || ''}` : (option.sgrp_name || String(option));
+                  }}
+                  getOptionValue={(option) => {
+                    if (typeof option === 'string') return option;
+                    return option.sgrp_code || option;
+                  }}
                 />
               </div>
               
@@ -628,6 +662,30 @@ export default function MaterialGroupsPage() {
           </div>
         </div>
       )}
+
+      {/* View Modal */}
+      <ViewModal
+        isOpen={isViewModalOpen}
+        onClose={() => {
+          setIsViewModalOpen(false);
+          setViewingGroup(null);
+        }}
+        data={viewingGroup}
+        title="View Material Group Details"
+        fieldLabels={{
+          mgrp_code: "Material Group Code",
+          mgrp_shortname: "Short Name",
+          mgrp_longname: "Long Name",
+          sgrp_code: "Super Group",
+          is_service: "Is Service",
+          attribgrpid: "Attribute Group ID",
+          notes: "Notes",
+          created: "Created",
+          createdby: "Created By",
+          updated: "Updated",
+          updatedby: "Updated By"
+        }}
+      />
     </div>
   );
 }
